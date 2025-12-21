@@ -7,3 +7,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+    group_add:
+      - 20 # "dialout" (stat -c "%g" /dev/ttyUSB0)
