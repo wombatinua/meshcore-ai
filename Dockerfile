@@ -1,14 +1,12 @@
 FROM node:25-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 ENV NODE_ENV=production
 
 COPY package*.json ./
 RUN npm install --omit=dev
 
-COPY . .
-
-EXPOSE 3000
+COPY src ./src
 
 CMD ["npm", "start"]

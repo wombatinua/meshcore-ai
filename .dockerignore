@@ -1,7 +1,6 @@
 node_modules
-.npmrc
 .git
 .gitignore
 Dockerfile
-docker-compose.yml
+compose.yml
 .DS_Store
