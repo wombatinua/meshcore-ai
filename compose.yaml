@@ -1,0 +1,9 @@
+services:
+  meshcore-ai:
+    image: meshcore-ai:latest
+    container_name: meshcore-ai
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
