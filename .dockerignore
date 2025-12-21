@@ -1,0 +1,7 @@
+node_modules
+.npmrc
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.DS_Store
