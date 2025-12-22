@@ -27,7 +27,9 @@ connection.on("connected", async () => {
 connection.on("disconnected", async () => {
 
 	console.log(selfInfo.name + " (" + selfInfo.advType + ") disconnected from " + meshcoreDevice);
-	if (reconnectDelay) setTimeout(connectLoop, reconnectDelay);
+
+	// reconnect if RECONNECT_DELAY present
+	if (reconnectDelay) helpers.wait(reconnectDelay).then(connectDevice);
 });
 
 // wait on messages
@@ -77,20 +79,18 @@ async function onChannelMessageReceived(message) {
 	console.log("Received channel message", channelName, message);
 }
 
-// connect to meshcore device or
-// reconnect if RECONNECT_DELAY present
+// (re)connect to meshcore device
 async function connectDevice() {
 
 	try { 
 		await connection.connect();
 	} catch (error) { 
 		console.log(error.message); 
-		// graceful exit
-		if (!reconnectDelay) return;
 
-		// reconnect with delay
-		await helpers.wait(reconnectDelay); 
-		return connectDevice(); 
+		// reconnect if RECONNECT_DELAY present
+		if (reconnectDelay) return helpers.wait(reconnectDelay).then(connectDevice);
+		// or exit gracefully
+		else return;
 	}
 }
 
