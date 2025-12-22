@@ -22,7 +22,7 @@ connection.on("connected", async () => {
 	// await connection.sendFloodAdvert();
 });
 
-// listen for new messages
+// wait on messages
 connection.on(Constants.PushCodes.MsgWaiting, async () => {
 
 	try {
@@ -37,12 +37,12 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 			if (message.channelMessage) await onChannelMessageReceived(message.channelMessage);
 
 		}
-
 	} catch (error) { 
 		console.log(error);
 	}
 });
 
+// contact message received
 async function onContactMessageReceived(message) {
 
 	// get contact name by prefix
@@ -60,6 +60,7 @@ async function onContactMessageReceived(message) {
 	await connection.sendTextMessage(contact.publicKey, message.text, Constants.TxtTypes.Plain);
 }
 
+// channel message received
 async function onChannelMessageReceived(message) {
 
 	// get channel name by id
