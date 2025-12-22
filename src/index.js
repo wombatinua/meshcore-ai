@@ -3,6 +3,7 @@ import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
 
 const meshcoreDevice = process.env.MESHCORE_DEVICE;
+const reconnectDelay = Number(process.env.RECONNECT_DELAY);
 const connection = new NodeJSSerialConnection(meshcoreDevice);
 
 let selfInfo = {};
@@ -22,6 +23,13 @@ connection.on("connected", async () => {
 	// await connection.sendFloodAdvert();
 });
 
+// wait on disconnection
+connection.on("disconnected", async () => {
+
+	console.log(selfInfo.name + " (" + selfInfo.advType + ") disconnected from " + meshcoreDevice);
+	if (reconnectDelay) setTimeout(connectLoop, reconnectDelay);
+});
+
 // wait on messages
 connection.on(Constants.PushCodes.MsgWaiting, async () => {
 
@@ -35,7 +43,6 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 
 			// message received from channel
 			if (message.channelMessage) await onChannelMessageReceived(message.channelMessage);
-
 		}
 	} catch (error) { 
 		console.log(error);
@@ -70,5 +77,21 @@ async function onChannelMessageReceived(message) {
 	console.log("Received channel message", channelName, message);
 }
 
-// connect to meshcore device
-await connection.connect();
+// connect to meshcore device or
+// reconnect if RECONNECT_DELAY present
+async function connectDevice() {
+
+	try { 
+		await connection.connect();
+	} catch (error) { 
+		console.log(error.message); 
+		// graceful exit
+		if (!reconnectDelay) return;
+
+		// reconnect with delay
+		await helpers.wait(reconnectDelay); 
+		return connectDevice(); 
+	}
+}
+
+await connectDevice();
