@@ -18,7 +18,8 @@ const actionHandlers = {
 	apiReboot,
 	apiSyncDeviceTime,
 	apiSendFloodAdvert,
-	apiSendZeroHopAdvert
+	apiSendZeroHopAdvert,
+	apiGetContacts
 };
 
 // start http server
@@ -40,10 +41,10 @@ async function apiReboot(params) {
 
 	try {
 		await connection.reboot();
-		return { message: "Device reboot command sent", params: params ?? null };
+		return { message: "Device reboot command sent" };
 	} catch (error) {
 		console.log("apiReboot failed", error);
-		return { message: "Device reboot failed", error: error?.message || String(error), params: params ?? null };
+		return { message: "Device reboot failed", error: error?.message || String(error) };
 	}
 }
 
@@ -53,10 +54,10 @@ async function apiSyncDeviceTime(params) {
 
 	try {
 		await connection.syncDeviceTime();
-		return { message: "Device time synchronized", params: params ?? null };
+		return { message: "Device time synchronized" };
 	} catch (error) {
 		console.log("apiSyncDeviceTime failed", error);
-		return { message: "Device time sync failed", error: error?.message || String(error), params: params ?? null };
+		return { message: "Device time sync failed", error: error?.message || String(error) };
 	}
 }
 
@@ -66,10 +67,10 @@ async function apiSendFloodAdvert(params) {
 
 	try {
 		await connection.sendFloodAdvert();
-		return { message: "Flood advert sent", params: params ?? null };
+		return { message: "Flood advert sent" };
 	} catch (error) {
 		console.log("apiSendFloodAdvert failed", error);
-		return { message: "Flood advert failed", error: error?.message || String(error), params: params ?? null };
+		return { message: "Flood advert failed", error: error?.message || String(error) };
 	}
 }
 
@@ -79,10 +80,55 @@ async function apiSendZeroHopAdvert(params) {
 
 	try {
 		await connection.sendZeroHopAdvert();
-		return { message: "Zero-hop advert sent", params: params ?? null };
+		return { message: "Zero-hop advert sent" };
 	} catch (error) {
 		console.log("apiSendZeroHopAdvert failed", error);
-		return { message: "Zero-hop advert failed", error: error?.message || String(error), params: params ?? null };
+		return { message: "Zero-hop advert failed", error: error?.message || String(error) };
+	}
+}
+
+async function apiGetContacts(params) {
+
+	console.log("apiGetContacts", params);
+
+	try {
+		const contactsRaw = await connection.getContacts();
+		const contacts = contactsRaw.map((contact) => {
+
+			const publicKey = helpers.bytesToHex(contact.publicKey);
+			const outPath = helpers.bytesToHex(contact.outPath, contact.outPathLen > 0 ? contact.outPathLen : undefined);
+			const type = helpers.constantKey(Constants.AdvType, contact.type).toLowerCase();
+			const lastAdvert = helpers.formatDateTime(contact.lastAdvert);
+			const lastMod = helpers.formatDateTime(contact.lastMod);
+
+			// coords in 1e-6 degrees
+			const lat = contact.advLat != null ? (contact.advLat / 1e6).toFixed(6) : "";
+			const lon = contact.advLon != null ? (contact.advLon / 1e6).toFixed(6) : "";
+
+			// exclude source keys
+			const {
+				outPath: _omitOutPath,
+				outPathLen: _omitOutPathLen,
+				flags: _omitFlags,
+				...rest
+			} = contact;
+
+			return {
+				...rest,
+				publicKey,
+				//outPath,
+				type,
+				lastAdvert,
+				lastMod,
+				advLat: lat,
+				advLon: lon
+			};
+		});
+
+		return { contacts };
+	} catch (error) {
+		console.log("apiGetContacts failed", error);
+		return { message: "Contacts retrieval failed", error: error?.message || String(error) };
 	}
 }
 

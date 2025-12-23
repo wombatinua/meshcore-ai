@@ -36,7 +36,8 @@
 				"apiReboot",
 				"apiSyncDeviceTime",
 				"apiSendFloodAdvert",
-				"apiSendZeroHopAdvert"
+				"apiSendZeroHopAdvert",
+				"apiGetContacts"
 			];
 
 		const form = document.getElementById("action-form");
@@ -78,11 +79,13 @@
 				});
 
 				const data = await response.json();
-				status.textContent = data.ok ? JSON.stringify(data.result) : data.error || "Request failed";
+				status.textContent = data.ok
+					? JSON.stringify(data.result ?? data, null, 2)
+					: data.error || "Request failed";
 			} catch (error) {
 				status.textContent = error.message;
 			}
-		});
+			});
 	</script>
 </body>
 
