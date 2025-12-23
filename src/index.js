@@ -17,7 +17,8 @@ const actionHandlers = {
 
 	apiReboot,
 	apiSyncDeviceTime,
-	apiSendFloodAdvert
+	apiSendFloodAdvert,
+	apiSendZeroHopAdvert
 };
 
 // start http server
@@ -69,6 +70,19 @@ async function apiSendFloodAdvert(params) {
 	} catch (error) {
 		console.log("apiSendFloodAdvert failed", error);
 		return { message: "Flood advert failed", error: error?.message || String(error), params: params ?? null };
+	}
+}
+
+async function apiSendZeroHopAdvert(params) {
+
+	console.log("apiSendZeroHopAdvert", params);
+
+	try {
+		await connection.sendZeroHopAdvert();
+		return { message: "Zero-hop advert sent", params: params ?? null };
+	} catch (error) {
+		console.log("apiSendZeroHopAdvert failed", error);
+		return { message: "Zero-hop advert failed", error: error?.message || String(error), params: params ?? null };
 	}
 }
 
