@@ -12,14 +12,15 @@ const connection = new NodeJSSerialConnection(meshcoreDevice);
 
 let selfInfo = {};
 
-// http api handlers
+// http api handlers whitelist
 const actionHandlers = {
 
 	apiReboot,
 	apiSyncDeviceTime,
 	apiSendFloodAdvert,
 	apiSendZeroHopAdvert,
-	apiGetContacts
+	apiGetContacts,
+	apiGetChannels
 };
 
 // start http server
@@ -33,13 +34,15 @@ const httpServer = new HttpServer({
 
 await httpServer.start();
 
-// http api methods
+// HTTP API METHODS
 
+// reboot device
 async function apiReboot(params) {
 
 	console.log("apiReboot", params);
 
 	try {
+		// fire-and-forget reboot; resolves after a short delay inside meshcore.js
 		await connection.reboot();
 		return { message: "Device reboot command sent" };
 	} catch (error) {
@@ -48,6 +51,7 @@ async function apiReboot(params) {
 	}
 }
 
+// sync device RTC with host clock
 async function apiSyncDeviceTime(params) {
 
 	console.log("apiSyncDeviceTime", params);
@@ -61,11 +65,13 @@ async function apiSyncDeviceTime(params) {
 	}
 }
 
+// broadcast flood advert
 async function apiSendFloodAdvert(params) {
 
 	console.log("apiSendFloodAdvert", params);
 
 	try {
+		// mesh-wide advert
 		await connection.sendFloodAdvert();
 		return { message: "Flood advert sent" };
 	} catch (error) {
@@ -74,11 +80,13 @@ async function apiSendFloodAdvert(params) {
 	}
 }
 
+// broadcast zero-hop advert
 async function apiSendZeroHopAdvert(params) {
 
 	console.log("apiSendZeroHopAdvert", params);
 
 	try {
+		// local-only advert
 		await connection.sendZeroHopAdvert();
 		return { message: "Zero-hop advert sent" };
 	} catch (error) {
@@ -87,6 +95,7 @@ async function apiSendZeroHopAdvert(params) {
 	}
 }
 
+// fetch contacts and format readable fields
 async function apiGetContacts(params) {
 
 	console.log("apiGetContacts", params);
@@ -96,6 +105,7 @@ async function apiGetContacts(params) {
 		const contacts = contactsRaw.map((contact) => {
 
 			const publicKey = helpers.bytesToHex(contact.publicKey);
+			// truncate outPath to declared length if present
 			const outPath = helpers.bytesToHex(contact.outPath, contact.outPathLen > 0 ? contact.outPathLen : undefined);
 			const type = helpers.constantKey(Constants.AdvType, contact.type).toLowerCase();
 			const lastAdvert = helpers.formatDateTime(contact.lastAdvert);
@@ -105,7 +115,7 @@ async function apiGetContacts(params) {
 			const lat = contact.advLat != null ? (contact.advLat / 1e6).toFixed(6) : "";
 			const lon = contact.advLon != null ? (contact.advLon / 1e6).toFixed(6) : "";
 
-			// exclude source keys
+			// exclude source keys we replace
 			const {
 				outPath: _omitOutPath,
 				outPathLen: _omitOutPathLen,
@@ -129,6 +139,31 @@ async function apiGetContacts(params) {
 	} catch (error) {
 		console.log("apiGetContacts failed", error);
 		return { message: "Contacts retrieval failed", error: error?.message || String(error) };
+	}
+}
+
+// fetch channels and drop empty slots, hex-encode secret
+async function apiGetChannels(params) {
+
+	console.log("apiGetChannels", params);
+
+	try {
+		const channelsRaw = await connection.getChannels();
+		const channels = channelsRaw.map((channel) => {
+
+			const { secret, ...rest } = channel;
+			const secretHex = helpers.bytesToHex(secret);
+
+			return {
+				...rest,
+				secret: secretHex
+			};
+		}).filter((channel) => channel.name || (channel.secret && !/^0+$/.test(channel.secret)));
+
+		return { channels };
+	} catch (error) {
+		console.log("apiGetChannels failed", error);
+		return { message: "Channels retrieval failed", error: error?.message || String(error) };
 	}
 }
 
