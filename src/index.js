@@ -95,7 +95,7 @@ async function apiSendZeroHopAdvert(params) {
 	}
 }
 
-// fetch contacts and format readable fields
+// get contacts and format readable fields
 async function apiGetContacts(params) {
 
 	console.log("apiGetContacts", params);
@@ -142,7 +142,7 @@ async function apiGetContacts(params) {
 	}
 }
 
-// fetch channels and drop empty slots, hex-encode secret
+// get channels and drop empty slots, hex-encode secret
 async function apiGetChannels(params) {
 
 	console.log("apiGetChannels", params);
