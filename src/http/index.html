@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>MeshCore Control</title>
+	<link rel="stylesheet" href="index.css">
+</head>
+<body>
+	<main>
+		<h1>MeshCore Control</h1>
+		<section class="card">
+			<form id="action-form">
+				<div>
+					<label for="action">Action</label>
+					<input id="action" name="action" value="sampleFunction" aria-label="Action name">
+				</div>
+				<button id="connect" type="submit">Send</button>
+			</form>
+		</section>
+		<div id="status" aria-live="polite" class="card"></div>
+	</main>
+
+	<script type="module">
+		const form = document.getElementById("action-form");
+		const status = document.getElementById("status");
+		const actionInput = document.getElementById("action");
+
+		form.addEventListener("submit", async (event) => {
+
+			event.preventDefault();
+			status.textContent = "Sending...";
+
+			try {
+				const response = await fetch("/api", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ action: actionInput.value || "sampleFunction" })
+				});
+
+				const data = await response.json();
+				status.textContent = data.ok ? JSON.stringify(data.result) : data.error || "Request failed";
+			} catch (error) {
+				status.textContent = error.message;
+			}
+		});
+	</script>
+</body>
+</html>

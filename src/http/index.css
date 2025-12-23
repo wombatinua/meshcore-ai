@@ -1,0 +1,99 @@
+:root {
+	color-scheme: light;
+	--app-background: #f5f6f8;
+	--app-text: #222;
+	--card-background: #fff;
+	--card-border: #d5d8df;
+	--button-background: #0066ff;
+	--button-background-disabled: #7aa7ff;
+	--button-text: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: dark;
+		--app-background: #282828;
+		--app-text: #f4f6ff;
+		--card-background: #3c3c3c;
+		--card-border: #5e5e5e;
+		--button-background: #4c8dff;
+		--button-background-disabled: #3b4f72;
+		--button-text: #f4f6ff;
+	}
+}
+
+body {
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	margin: 0;
+	padding: 2rem;
+	background-color: var(--app-background);
+	color: var(--app-text);
+}
+
+main {
+	max-width: 720px;
+	margin: 0 auto;
+}
+
+h1 {
+	margin: 0 0 1rem;
+}
+
+.card {
+	background-color: var(--card-background);
+	border: 1px solid var(--card-border);
+	border-radius: 0.75rem;
+	padding: 1rem;
+}
+
+form {
+	display: flex;
+	gap: 0.75rem;
+	align-items: flex-end;
+	flex-wrap: wrap;
+}
+
+label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.25rem;
+	color: var(--app-text);
+}
+
+input {
+	padding: 0.55rem 0.75rem;
+	border: 1px solid var(--card-border);
+	border-radius: 0.5rem;
+	background-color: var(--card-background);
+	color: var(--app-text);
+	min-width: 200px;
+}
+
+button#connect {
+	padding: 0.75rem 1.5rem;
+	font-size: 1rem;
+	border: none;
+	border-radius: 0.5rem;
+	background-color: var(--button-background);
+	color: var(--button-text);
+	cursor: pointer;
+}
+
+button#connect:disabled {
+	background-color: var(--button-background-disabled);
+	cursor: not-allowed;
+}
+
+#status {
+	margin-top: 1rem;
+	background-color: var(--card-background);
+	border: 1px solid var(--card-border);
+	border-radius: 0.5rem;
+	min-height: 1rem;
+	max-height: 80vh;
+	overflow-y: auto;
+	font-family: "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+	font-size: 0.95rem;
+	white-space: pre-wrap;
+	padding: 1rem;
+}
