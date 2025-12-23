@@ -25,7 +25,9 @@ const httpServer = new HttpServer({
 	apiPath: httpApi,
 	root: "http",
 	actions: actionHandlers
-}); await httpServer.start();
+});
+
+await httpServer.start();
 
 // http api methods
 
@@ -34,7 +36,7 @@ async function apiDate(params) {
 	console.log("apiDate", params);
 
 	const now = new Date();
-	const date = now.toLocaleDateString("de-DE", { // gives dd.mm.yyyy
+	const date = now.toLocaleDateString("uk-UA", { // gives dd.mm.yyyy
 		day: "2-digit",
 		month: "2-digit",
 		year: "numeric"
@@ -48,7 +50,7 @@ async function apiTime(params) {
 	console.log("apiTime", params);
 
 	const now = new Date();
-	const time = now.toLocaleTimeString("en-GB", { // gives HH:MM:SS
+	const time = now.toLocaleTimeString("uk-UA", { // gives HH:MM:SS
 		hour: "2-digit",
 		minute: "2-digit",
 		second: "2-digit",
