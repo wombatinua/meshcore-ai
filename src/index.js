@@ -14,8 +14,10 @@ let selfInfo = {};
 
 // http api handlers
 const actionHandlers = {
-	apiDate,
-	apiTime
+
+	apiReboot,
+	apiSyncDeviceTime,
+	apiSendFloodAdvert
 };
 
 // start http server
@@ -31,33 +33,43 @@ await httpServer.start();
 
 // http api methods
 
-async function apiDate(params) {
+async function apiReboot(params) {
 
-	console.log("apiDate", params);
+	console.log("apiReboot", params);
 
-	const now = new Date();
-	const date = now.toLocaleDateString("uk-UA", { // gives dd.mm.yyyy
-		day: "2-digit",
-		month: "2-digit",
-		year: "numeric"
-	});
-
-	return { message: date, params: params ?? null };
+	try {
+		await connection.reboot();
+		return { message: "Device reboot command sent", params: params ?? null };
+	} catch (error) {
+		console.log("apiReboot failed", error);
+		return { message: "Device reboot failed", error: error?.message || String(error), params: params ?? null };
+	}
 }
 
-async function apiTime(params) {
+async function apiSyncDeviceTime(params) {
 
-	console.log("apiTime", params);
+	console.log("apiSyncDeviceTime", params);
 
-	const now = new Date();
-	const time = now.toLocaleTimeString("uk-UA", { // gives HH:MM:SS
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		hour12: false
-	});
+	try {
+		await connection.syncDeviceTime();
+		return { message: "Device time synchronized", params: params ?? null };
+	} catch (error) {
+		console.log("apiSyncDeviceTime failed", error);
+		return { message: "Device time sync failed", error: error?.message || String(error), params: params ?? null };
+	}
+}
 
-	return { message: time, params: params ?? null };
+async function apiSendFloodAdvert(params) {
+
+	console.log("apiSendFloodAdvert", params);
+
+	try {
+		await connection.sendFloodAdvert();
+		return { message: "Flood advert sent", params: params ?? null };
+	} catch (error) {
+		console.log("apiSendFloodAdvert failed", error);
+		return { message: "Flood advert failed", error: error?.message || String(error), params: params ?? null };
+	}
 }
 
 // wait on device connection

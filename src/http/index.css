@@ -39,37 +39,42 @@ h1 {
 	margin: 0 0 1rem;
 }
 
-.card {
+.panel {
 	background-color: var(--card-background);
 	border: 1px solid var(--card-border);
 	border-radius: 0.75rem;
 	padding: 1rem;
 }
 
-form {
+.action-form {
 	display: flex;
 	gap: 0.75rem;
 	align-items: flex-end;
 	flex-wrap: wrap;
 }
 
+.field {
+	display: flex;
+	flex-direction: column;
+	min-width: 200px;
+}
+
 label {
-	display: block;
 	font-weight: 600;
 	margin-bottom: 0.25rem;
 	color: var(--app-text);
 }
 
-input {
+input,
+select {
 	padding: 0.55rem 0.75rem;
 	border: 1px solid var(--card-border);
 	border-radius: 0.5rem;
 	background-color: var(--card-background);
 	color: var(--app-text);
-	min-width: 200px;
 }
 
-button#connect {
+button {
 	padding: 0.75rem 1.5rem;
 	font-size: 1rem;
 	border: none;
@@ -79,12 +84,12 @@ button#connect {
 	cursor: pointer;
 }
 
-button#connect:disabled {
+button:disabled {
 	background-color: var(--button-background-disabled);
 	cursor: not-allowed;
 }
 
-#status {
+#action-status {
 	margin-top: 1rem;
 	background-color: var(--card-background);
 	border: 1px solid var(--card-border);

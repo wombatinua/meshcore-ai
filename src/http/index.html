@@ -1,35 +1,54 @@
 <!doctype html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>MeshCore Control</title>
 	<link rel="stylesheet" href="index.css">
 </head>
+
 <body>
 	<main>
 		<h1>MeshCore Control</h1>
-		<section class="card">
-			<form id="action-form">
-				<div>
+		<section class="panel">
+			<form id="action-form" class="action-form">
+				<div class="field">
 					<label for="action">Action</label>
-					<input id="action" name="action" value="apiDate" aria-label="Action name">
+					<select id="action" name="action">
+						<option value="">Select action</option>
+					</select>
 				</div>
-				<div>
+				<div class="field">
 					<label for="params">Params (JSON or text)</label>
-					<input id="params" name="params" placeholder='{"foo":"bar"}' aria-label="Parameters">
+					<input id="params" name="params" placeholder='{"foo":"bar"}'>
 				</div>
-				<button id="connect" type="submit">Send</button>
+				<button id="action-submit" type="submit">Send</button>
 			</form>
 		</section>
-		<div id="status" aria-live="polite" class="card"></div>
+		<div id="action-status" class="panel"></div>
 	</main>
 
 	<script type="module">
+
+		// backend actionHandlers list
+		const availableActions = [
+			"apiReboot",
+			"apiSyncDeviceTime",
+			"apiSendFloodAdvert"
+		];
+
 		const form = document.getElementById("action-form");
-		const status = document.getElementById("status");
-		const actionInput = document.getElementById("action");
+		const status = document.getElementById("action-status");
+		const actionSelect = document.getElementById("action");
 		const paramsInput = document.getElementById("params");
+
+		availableActions.forEach((name) => {
+			const option = document.createElement("option");
+			option.value = name;
+			option.textContent = name;
+			actionSelect.appendChild(option);
+		});
 
 		form.addEventListener("submit", async (event) => {
 
@@ -37,6 +56,12 @@
 			status.textContent = "Sending...";
 
 			try {
+				const action = (actionSelect.value || "").trim();
+				if (!action) {
+					status.textContent = "Select an action";
+					return;
+				}
+
 				let params = paramsInput.value;
 
 				try {
@@ -48,7 +73,7 @@
 				const response = await fetch("/api", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ action: actionInput.value || "apiDate", params })
+					body: JSON.stringify({ action, params })
 				});
 
 				const data = await response.json();
@@ -59,4 +84,5 @@
 		});
 	</script>
 </body>
+
 </html>
