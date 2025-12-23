@@ -13,7 +13,11 @@
 			<form id="action-form">
 				<div>
 					<label for="action">Action</label>
-					<input id="action" name="action" value="sampleFunction" aria-label="Action name">
+					<input id="action" name="action" value="apiDate" aria-label="Action name">
+				</div>
+				<div>
+					<label for="params">Params (JSON or text)</label>
+					<input id="params" name="params" placeholder='{"foo":"bar"}' aria-label="Parameters">
 				</div>
 				<button id="connect" type="submit">Send</button>
 			</form>
@@ -25,6 +29,7 @@
 		const form = document.getElementById("action-form");
 		const status = document.getElementById("status");
 		const actionInput = document.getElementById("action");
+		const paramsInput = document.getElementById("params");
 
 		form.addEventListener("submit", async (event) => {
 
@@ -32,10 +37,18 @@
 			status.textContent = "Sending...";
 
 			try {
+				let params = paramsInput.value;
+
+				try {
+					if (params) params = JSON.parse(params);
+				} catch {
+					// leave as raw string if not valid JSON
+				}
+
 				const response = await fetch("/api", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ action: actionInput.value || "sampleFunction" })
+					body: JSON.stringify({ action: actionInput.value || "apiDate", params })
 				});
 
 				const data = await response.json();

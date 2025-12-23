@@ -21,13 +21,13 @@ const mimeTypes = {
 
 export default class HttpServer {
 
-	constructor({ port, host = "0.0.0.0", root = "http", staticDir, apiPath = "/api", sampleFunction }) {
+	constructor({ port = 8080, host = "localhost", root = "http", staticDir, apiPath = "/api", actions = {} } = {}) {
 
 		this.port = port;
 		this.host = host;
 		this.apiPath = apiPath;
 		this.staticDir = staticDir || path.join(__dirname, root);
-		this.sampleFunction = sampleFunction || (async () => ({ message: "sampleFunction executed" }));
+		this.actions = actions;
 		this.server = null;
 	}
 
@@ -54,29 +54,25 @@ export default class HttpServer {
 
 		try {
 
-			if (req.method === "GET") return await this.serveStatic(req, res, requestUrl);
 			if (req.method === "POST") {
 
-				if (requestUrl.pathname === this.apiPath) return await this.handleAction(req, res);
-
-				res.writeHead(404, { "Content-Type": "application/json" });
-				return res.end(JSON.stringify({ ok: false, error: "Not Found" }));
+				if (requestUrl.pathname !== this.apiPath) return this.json(res, 404, { ok: false, error: "Not Found" });
+				return await this.handleAction(req, res);
 			}
 
-			res.writeHead(405, { "Content-Type": "text/plain" });
-			res.end("Method Not Allowed");
+			if (req.method === "GET") return await this.serveStatic(res, requestUrl.pathname);
+
+			return this.text(res, 405, "Method Not Allowed");
 		} catch (error) {
 
 			console.error("HTTP server error:", error);
-			res.writeHead(500, { "Content-Type": "text/plain" });
-			res.end("Internal Server Error");
+			return this.text(res, 500, "Internal Server Error");
 		}
 	}
 
-	async serveStatic(req, res, requestUrl) {
+	async serveStatic(res, pathname = "/") {
 
-		requestUrl = requestUrl || new URL(req.url, `http://${req.headers.host}`);
-		const normalizedPath = path.normalize(requestUrl.pathname === "/" ? "/index.html" : requestUrl.pathname);
+		const normalizedPath = path.normalize(pathname === "/" ? "/index.html" : pathname);
 		const safePath = normalizedPath.replace(/^(\.\.[/\\])+/g, "");
 		const filePath = path.join(this.staticDir, safePath);
 
@@ -113,20 +109,37 @@ export default class HttpServer {
 		try {
 			payload = JSON.parse(body || "{}");
 		} catch {
-			res.writeHead(400, { "Content-Type": "application/json" });
-			return res.end(JSON.stringify({ ok: false, error: "Invalid JSON" }));
+			return this.json(res, 400, { ok: false, error: "Invalid JSON" });
 		}
 
-		if (payload.action !== "sampleFunction") {
+		const { action, params } = payload;
 
-			res.writeHead(400, { "Content-Type": "application/json" });
-			return res.end(JSON.stringify({ ok: false, error: "Unknown action" }));
+		if (!action) {
+
+			return this.json(res, 400, { ok: false, error: "Missing action" });
 		}
 
-		const result = await this.sampleFunction(payload);
+		const handler = this.actions[action];
 
-		res.writeHead(200, { "Content-Type": "application/json" });
-		res.end(JSON.stringify({ ok: true, result }));
+		if (typeof handler !== "function") {
+
+			return this.json(res, 400, { ok: false, error: "Unknown action" });
+		}
+
+		let parsedParams = params;
+
+		if (typeof params === "string") {
+
+			try {
+				parsedParams = JSON.parse(params);
+			} catch {
+				parsedParams = params;
+			}
+		}
+
+		const result = await handler(parsedParams);
+
+		return this.json(res, 200, { ok: true, result });
 	}
 
 	async readRequestBody(req) {
@@ -148,10 +161,21 @@ export default class HttpServer {
 
 		stream.on("error", () => {
 
-			res.writeHead(500, { "Content-Type": "text/plain" });
-			res.end("Internal Server Error");
+			this.text(res, 500, "Internal Server Error");
 		});
 
 		stream.pipe(res);
+	}
+
+	json(res, statusCode, payload) {
+
+		res.writeHead(statusCode, { "Content-Type": "application/json" });
+		res.end(JSON.stringify(payload));
+	}
+
+	text(res, statusCode, payload) {
+
+		res.writeHead(statusCode, { "Content-Type": "text/plain" });
+		res.end(payload);
 	}
 }

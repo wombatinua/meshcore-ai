@@ -3,7 +3,7 @@ import HttpServer from "./server.js";
 import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
 
-const httpHost = process.env.HTTP_HOST || "0.0.0.0";
+const httpHost = process.env.HTTP_HOST || "localhost";
 const httpPort = Number(process.env.HTTP_PORT) || 8080;
 const httpApi = process.env.HTTP_API || "/api";
 const meshcoreDevice = process.env.MESHCORE_DEVICE;
@@ -12,18 +12,51 @@ const connection = new NodeJSSerialConnection(meshcoreDevice);
 
 let selfInfo = {};
 
+// http api handlers
+const actionHandlers = {
+	apiDate,
+	apiTime
+};
+
+// start http server
 const httpServer = new HttpServer({
 	port: httpPort,
 	host: httpHost,
 	apiPath: httpApi,
 	root: "http",
-	sampleFunction: async () => {
-		console.log("sampleFunction invoked");
-		return { message: "sampleFunction executed", time: new Date().toISOString() };
-	}
-});
+	actions: actionHandlers
+}); await httpServer.start();
 
-await httpServer.start();
+// http api methods
+
+async function apiDate(params) {
+
+	console.log("apiDate", params);
+
+	const now = new Date();
+	const date = now.toLocaleDateString("de-DE", { // gives dd.mm.yyyy
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric"
+	});
+
+	return { message: date, params: params ?? null };
+}
+
+async function apiTime(params) {
+
+	console.log("apiTime", params);
+
+	const now = new Date();
+	const time = now.toLocaleTimeString("en-GB", { // gives HH:MM:SS
+		hour: "2-digit",
+		minute: "2-digit",
+		second: "2-digit",
+		hour12: false
+	});
+
+	return { message: time, params: params ?? null };
+}
 
 // wait on device connection
 connection.on("connected", async () => {
@@ -63,7 +96,7 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 			// message received from channel
 			if (message.channelMessage) await onChannelMessageReceived(message.channelMessage);
 		}
-	} catch (error) { 
+	} catch (error) {
 		console.log(error);
 	}
 });
@@ -99,10 +132,10 @@ async function onChannelMessageReceived(message) {
 // (re)connect to device
 async function connectDevice() {
 
-	try { 
+	try {
 		await connection.connect();
-	} catch (error) { 
-		console.log(error.message); 
+	} catch (error) {
+		console.log(error.message);
 
 		// reconnect if RECONNECT_DELAY present
 		if (reconnectDelay) return helpers.wait(reconnectDelay).then(connectDevice);
