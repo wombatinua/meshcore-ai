@@ -215,8 +215,8 @@ connection.on("connected", async () => {
 		const contacts = await connection.getContacts();
 		cache.cacheContacts(contacts);
 	} catch (error) {
-			console.log("Failed to warm contact cache", error);
-		}
+		console.log("Failed to warm contact cache", error);
+	}
 
 	selfInfo = await connection.getSelfInfo();
 	selfInfo.advType = helpers.constantKey(Constants.AdvType, selfInfo.type).toLowerCase();
@@ -434,7 +434,7 @@ async function connectDevice() {
 	// avoid hammering when device path is absent
 	if (meshcoreDevice && !fs.existsSync(meshcoreDevice)) {
 		if (!missingDeviceLogged) {
-			console.log(`Device path not found: ${meshcoreDevice} (retrying in ${reconnectDelay}ms)`);
+			console.log(`Device path not found: ${meshcoreDevice} (retry every ${reconnectDelay} ms)`);
 			missingDeviceLogged = true;
 		}
 		return queueReconnect();
