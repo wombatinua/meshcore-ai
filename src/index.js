@@ -21,7 +21,9 @@ const actionHandlers = {
 	apiSendFloodAdvert,
 	apiSendZeroHopAdvert,
 	apiGetContacts,
-	apiGetChannels
+	apiGetChannels,
+	apiGetAdverts,
+	apiGetMessages
 };
 
 // start http server
@@ -168,6 +170,35 @@ async function apiGetChannels(params) {
 	}
 }
 
+// get stored adverts
+async function apiGetAdverts(params) {
+
+	console.log("apiGetAdverts", params);
+
+	try {
+		const adverts = database.getAdverts();
+		return { adverts };
+	} catch (error) {
+		console.log("apiGetAdverts failed", error);
+		return { message: "Adverts retrieval failed", error: error?.message || String(error) };
+	}
+}
+
+// get stored messages
+async function apiGetMessages(params) {
+
+	console.log("apiGetMessages", params);
+
+	try {
+		const limit = typeof params?.limit === "number" ? params.limit : 100;
+		const messages = database.getMessages(limit);
+		return { messages };
+	} catch (error) {
+		console.log("apiGetMessages failed", error);
+		return { message: "Messages retrieval failed", error: error?.message || String(error) };
+	}
+}
+
 // DEVICE EVENTS
 
 // wait on device connection
@@ -298,7 +329,7 @@ async function onContactMessageReceived(message) {
 
 	try {
 		database.saveMessage({
-			contactPublicKey: contact ? helpers.bytesToHex(contact.publicKey) : null,
+			publicKey: contact ? helpers.bytesToHex(contact.publicKey) : null,
 			advName: contact?.advName || null,
 			senderTimestamp: message.senderTimestamp,
 			text: message.text
@@ -350,7 +381,7 @@ async function onChannelMessageReceived(message) {
 			channelIdx: message.channelIdx,
 			channelName,
 			advName,
-			contactPublicKey,
+			publicKey: contactPublicKey,
 			senderTimestamp: message.senderTimestamp,
 			text: parsedText
 		});

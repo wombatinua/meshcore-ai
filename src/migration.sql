@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS adverts (
 
 CREATE TABLE IF NOT EXISTS messages (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	contact_public_key TEXT,
+	public_key TEXT,
 	channel_idx INTEGER,
 	channel_name TEXT,
 	adv_name TEXT,

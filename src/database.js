@@ -80,7 +80,7 @@ export function upsertAdvert({
 
 // store an incoming message (contact or channel)
 export function saveMessage({
-	contactPublicKey = null,
+	publicKey = null,
 	channelIdx = null,
 	channelName = null,
 	advName = null,
@@ -91,10 +91,10 @@ export function saveMessage({
 	const db = initDatabase();
 
 	db.prepare(`
-		INSERT INTO messages (contact_public_key, channel_idx, channel_name, adv_name, sender_timestamp, text, timestamp)
-		VALUES (@contactPublicKey, @channelIdx, @channelName, @advName, @senderTimestamp, @text, datetime('now'))
+		INSERT INTO messages (public_key, channel_idx, channel_name, adv_name, sender_timestamp, text, timestamp)
+		VALUES (@publicKey, @channelIdx, @channelName, @advName, @senderTimestamp, @text, datetime('now'))
 	`).run({
-		contactPublicKey: nullish(contactPublicKey),
+		publicKey: nullish(publicKey),
 		channelIdx: nullish(channelIdx),
 		channelName: nullish(channelName),
 		advName: nullish(advName),
