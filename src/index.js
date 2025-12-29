@@ -207,10 +207,8 @@ async function apiGetMessages(params) {
 connection.on("connected", async () => {
 
 	isConnected = true;
-	if (reconnectTimer) {
-		clearTimeout(reconnectTimer);
-		reconnectTimer = null;
-	}
+	missingDeviceLogged = false;
+	clearReconnectTimer();
 
 	// refresh contacts cache on connect
 	try {
@@ -242,7 +240,7 @@ connection.on("disconnected", async () => {
 	console.log(selfInfo.name + " (" + selfInfo.advType + ") disconnected from " + meshcoreDevice);
 
 	// reconnect if RECONNECT_DELAY present
-	scheduleReconnect();
+	queueReconnect();
 });
 
 // handle serial/device errors and retry after delay
@@ -250,7 +248,7 @@ connection.on("error", (error) => {
 
 	isConnected = false;
 	console.log("Connection error", error?.message || error);
-	scheduleReconnect();
+	queueReconnect();
 });
 
 // wait on incoming messages -->
@@ -439,7 +437,7 @@ async function connectDevice() {
 			console.log(`Device path not found: ${meshcoreDevice} (retrying in ${reconnectDelay}ms)`);
 			missingDeviceLogged = true;
 		}
-		return scheduleReconnect();
+		return queueReconnect();
 	}
 
 	try {
@@ -447,17 +445,14 @@ async function connectDevice() {
 	} catch (error) {
 		console.log(error.message);
 
-		scheduleReconnect();
+		queueReconnect();
 		return;
 	}
-
-	// reset missing-device notice after a successful connect
-	missingDeviceLogged = false;
 
 	// watchdog: if not connected within delay, try again
 	if (reconnectDelay) {
 		setTimeout(() => {
-			if (!isConnected) scheduleReconnect();
+			if (!isConnected) queueReconnect();
 		}, reconnectDelay);
 	}
 }
@@ -465,13 +460,16 @@ async function connectDevice() {
 await connectDevice();
 
 // schedule a delayed reconnect once
-function scheduleReconnect() {
-
-	if (!reconnectDelay) return;
-	if (reconnectTimer) return;
-
+function queueReconnect() {
+	if (!reconnectDelay || reconnectTimer) return;
 	reconnectTimer = setTimeout(() => {
 		reconnectTimer = null;
 		connectDevice();
 	}, reconnectDelay);
+}
+
+function clearReconnectTimer() {
+	if (!reconnectTimer) return;
+	clearTimeout(reconnectTimer);
+	reconnectTimer = null;
 }
