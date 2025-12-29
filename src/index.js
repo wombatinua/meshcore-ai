@@ -255,12 +255,12 @@ async function onAdvertReceived(advert) {
 	const advName = pick("advName");
 	const flags = pick("flags");
 
-	console.log("Advert received", {
+	console.log("Received adevert", {
 		publicKey,
 		type,
-		flags,
-		outPathLen,
-		outPath,
+		//flags,
+		//outPathLen,
+		//outPath,
 		advName,
 		lastAdvert,
 		lastMod,
