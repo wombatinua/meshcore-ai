@@ -167,6 +167,8 @@ async function apiGetChannels(params) {
 	}
 }
 
+// DEVICE EVENTS
+
 // wait on device connection
 connection.on("connected", async () => {
 
@@ -191,7 +193,8 @@ connection.on("disconnected", async () => {
 	if (reconnectDelay) helpers.wait(reconnectDelay).then(connectDevice);
 });
 
-// wait on incoming messages
+// wait on incoming messages -->
+// onContactMessageReceived / onChannelMessageReceived
 connection.on(Constants.PushCodes.MsgWaiting, async () => {
 
 	try {
@@ -210,7 +213,7 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 	}
 });
 
-// wait on adverts (full & public key only)
+// wait on adverts (full & public key only) --> onAdvertReceived
 [Constants.PushCodes.NewAdvert, Constants.PushCodes.Advert].forEach((pushCode) => {
 
 	connection.on(pushCode, async (advert) => {
