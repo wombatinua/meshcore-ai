@@ -210,6 +210,88 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 	}
 });
 
+// wait on adverts (full data push)
+connection.on(Constants.PushCodes.NewAdvert, async (advert) => {
+
+	try {
+		await onAdvertReceived(advert);
+	} catch (error) {
+		console.log("onAdvertReceived failed", error);
+	}
+});
+
+// wait on adverts (public key only push)
+connection.on(Constants.PushCodes.Advert, async (advert) => {
+
+	try {
+		await onAdvertReceived(advert);
+	} catch (error) {
+		console.log("onAdvertReceived public-key-only failed", error);
+	}
+});
+
+// advert received
+async function onAdvertReceived(advert) {
+
+	if (!advert) {
+		console.log("Advert received with no data");
+		return;
+	}
+
+	const publicKey = helpers.bytesToHex(advert.publicKey);
+
+	// fetch full contact info so we log details even when advert push is minimal
+	let contactDetails = null;
+	try {
+		const contacts = await connection.getContacts();
+		const match = contacts.find((contact) => helpers.bytesToHex(contact.publicKey) === publicKey);
+		if (match) {
+			const matchType = helpers.constantKey(Constants.AdvType, match.type).toLowerCase();
+			const matchOutPath = helpers.bytesToHex(match.outPath, match.outPathLen > 0 ? match.outPathLen : undefined);
+			const matchLastAdvert = helpers.formatDateTime(match.lastAdvert);
+			const matchLastMod = helpers.formatDateTime(match.lastMod);
+			const matchLat = match.advLat != null ? (match.advLat / 1e6).toFixed(6) : "";
+			const matchLon = match.advLon != null ? (match.advLon / 1e6).toFixed(6) : "";
+
+			contactDetails = {
+				type: matchType,
+				outPathLen: match.outPathLen,
+				outPath: matchOutPath,
+				advName: match.advName,
+				lastAdvert: matchLastAdvert,
+				lastMod: matchLastMod,
+				advLat: matchLat,
+				advLon: matchLon,
+				flags: match.flags
+			};
+		}
+	} catch (error) {
+		console.log("Failed to fetch contact info for advert", error);
+	}
+
+	const type = advert.type != null ? helpers.constantKey(Constants.AdvType, advert.type).toLowerCase() : contactDetails?.type;
+	const outPath = helpers.bytesToHex(advert.outPath, advert.outPathLen > 0 ? advert.outPathLen : undefined) || contactDetails?.outPath;
+	const lastAdvert = helpers.formatDateTime(advert.lastAdvert) || contactDetails?.lastAdvert;
+	const lastMod = helpers.formatDateTime(advert.lastMod) || contactDetails?.lastMod;
+	const advLat = advert.advLat != null ? (advert.advLat / 1e6).toFixed(6) : contactDetails?.advLat || "";
+	const advLon = advert.advLon != null ? (advert.advLon / 1e6).toFixed(6) : contactDetails?.advLon || "";
+	const flags = advert.flags ?? contactDetails?.flags;
+	const advName = advert.advName || contactDetails?.advName;
+
+	console.log("Advert received", {
+		publicKey,
+		type,
+		flags,
+		outPathLen: advert.outPathLen ?? contactDetails?.outPathLen,
+		outPath,
+		advName,
+		lastAdvert,
+		lastMod,
+		advLat,
+		advLon
+	});
+}
+
 // contact message received
 async function onContactMessageReceived(message) {
 
