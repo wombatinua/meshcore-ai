@@ -3,7 +3,7 @@ export function constantKey(map, id, fallback = "Unknown") {
 	return Object.keys(map).find(k => map[k] === id) || fallback;
 }
 
-// non-blockin delay
+// non-blocking delay
 // await wait(5000);
 export function wait(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -15,6 +15,7 @@ export function bytesToHex(byteLike, length) {
 	if (!byteLike) return "";
 
 	const values = Array.isArray(byteLike) ? byteLike : Object.values(byteLike);
+	// clamp to provided length if given
 	const slice = typeof length === "number" && length > 0 ? values.slice(0, length) : values;
 
 	return Buffer.from(slice).toString("hex");

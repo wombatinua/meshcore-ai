@@ -1,4 +1,5 @@
 import * as helpers from "./helpers.js";
+import * as database from "./database.js";
 import HttpServer from "./server.js";
 import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
@@ -239,6 +240,7 @@ async function onAdvertReceived(advert) {
 
 	// helper to pick a value from advert, falling back to contact fields
 	const pick = (field, transform = (v) => v) => {
+
 		const advVal = advert[field];
 		if (advVal != null) return transform(advVal);
 		if (!contact) return undefined;
@@ -246,14 +248,16 @@ async function onAdvertReceived(advert) {
 	};
 
 	const type = pick("type", (t) => helpers.constantKey(Constants.AdvType, t).toLowerCase());
-	const outPathLen = pick("outPathLen");
-	const outPath = pick("outPath", (v) => helpers.bytesToHex(v, outPathLen > 0 ? outPathLen : undefined));
-	const lastAdvert = pick("lastAdvert", helpers.formatDateTime);
-	const lastMod = pick("lastMod", helpers.formatDateTime);
+	//const outPathLen = pick("outPathLen");
+	//const outPath = pick("outPath", (v) => helpers.bytesToHex(v, outPathLen > 0 ? outPathLen : undefined));
+	//const flags = pick("flags");
+	const lastAdvertRaw = pick("lastAdvert");
+	const lastModRaw = pick("lastMod");
+	const lastAdvert = lastAdvertRaw != null ? helpers.formatDateTime(lastAdvertRaw) : "";
+	const lastMod = lastModRaw != null ? helpers.formatDateTime(lastModRaw) : "";
 	const advLat = pick("advLat", (v) => (v != null ? (v / 1e6).toFixed(6) : ""));
 	const advLon = pick("advLon", (v) => (v != null ? (v / 1e6).toFixed(6) : ""));
 	const advName = pick("advName");
-	const flags = pick("flags");
 
 	console.log("Received adevert", {
 		publicKey,
@@ -267,6 +271,20 @@ async function onAdvertReceived(advert) {
 		advLat,
 		advLon
 	});
+
+	try {
+		database.upsertAdvert({
+			publicKey,
+			type,
+			advName,
+			lastAdvert: lastAdvertRaw,
+			lastMod: lastModRaw,
+			advLat,
+			advLon
+		});
+	} catch (error) {
+		console.log("Failed to persist advert", error);
+	}
 }
 
 // contact message received
@@ -277,6 +295,17 @@ async function onContactMessageReceived(message) {
 	const contactName = contact.advName;
 
 	console.log("Received contact message", contactName, message);
+
+	try {
+		database.saveMessage({
+			contactPublicKey: contact ? helpers.bytesToHex(contact.publicKey) : null,
+			advName: contact?.advName || null,
+			senderTimestamp: message.senderTimestamp,
+			text: message.text
+		});
+	} catch (error) {
+		console.log("Failed to persist contact message", error);
+	}
 
 	if (!contact) {
 
@@ -294,7 +323,40 @@ async function onChannelMessageReceived(message) {
 	const channelInfo = await connection.getChannel(message.channelIdx);
 	const channelName = channelInfo.name;
 
-	console.log("Received channel message", channelName, message);
+	// attempt to split "advName: text" or "advName; text"
+	let advName = null;
+	let parsedText = message.text;
+	const match = message.text.match(/^(.*?):\s?(.*)$/);
+	if (match) {
+		advName = match[1];
+		parsedText = match[2];
+	}
+
+	console.log("Received channel message", channelName, { ...message, text: parsedText, advName });
+
+	let contactPublicKey = null;
+	if (advName) {
+		try {
+			const contacts = await connection.getContacts();
+			const found = contacts.find((c) => c.advName === advName);
+			if (found) contactPublicKey = helpers.bytesToHex(found.publicKey);
+		} catch (error) {
+			console.log("Failed to resolve contact by advName", error);
+		}
+	}
+
+	try {
+		database.saveMessage({
+			channelIdx: message.channelIdx,
+			channelName,
+			advName,
+			contactPublicKey,
+			senderTimestamp: message.senderTimestamp,
+			text: parsedText
+		});
+	} catch (error) {
+		console.log("Failed to persist channel message", error);
+	}
 }
 
 // (re)connect to device

@@ -12,6 +12,7 @@
     "node": ">=25"
   },
   "dependencies": {
+    "better-sqlite3": "^12.5.0",
     "meshcore.js": "git+https://github.com/meshcore-dev/meshcore.js.git"
   }
 }
