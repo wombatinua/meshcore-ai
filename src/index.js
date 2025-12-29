@@ -210,13 +210,14 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 	}
 });
 
-// wait on adverts (full data push + public key only)
+// wait on adverts (full & public key only)
 [Constants.PushCodes.NewAdvert, Constants.PushCodes.Advert].forEach((pushCode) => {
+
 	connection.on(pushCode, async (advert) => {
 		try {
 			await onAdvertReceived(advert);
 		} catch (error) {
-			console.log("onAdvertReceived failed", error);
+			console.log(error);
 		}
 	});
 });
@@ -224,15 +225,10 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 // advert received
 async function onAdvertReceived(advert) {
 
-	if (!advert) {
-		console.log("Advert received with no data");
-		return;
-	}
-
-	// start with public key we always get
+	// start with public key\
 	const publicKey = helpers.bytesToHex(advert.publicKey);
 
-	// fetch contact list so we can enrich public-key-only adverts
+	// fetch contact list to enrich public-key-only adverts
 	const contacts = await connection.getContacts().catch((error) => {
 		console.log("Failed to fetch contact info for advert", error);
 		return [];
