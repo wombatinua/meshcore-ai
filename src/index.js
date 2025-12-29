@@ -1,5 +1,6 @@
 import * as helpers from "./helpers.js";
 import * as database from "./database.js";
+import * as cache from "./cache.js";
 import HttpServer from "./server.js";
 import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
@@ -104,21 +105,19 @@ async function apiGetContacts(params) {
 	console.log("apiGetContacts", params);
 
 	try {
-		const contactsRaw = await connection.getContacts();
+		// prefer cache; otherwise pull fresh and refresh cache
+		let contactsRaw = cache.hasCachedContacts() ? cache.getCachedContacts() : await connection.getContacts();
+		if (contactsRaw?.length) cache.cacheContacts(contactsRaw);
+
 		const contacts = contactsRaw.map((contact) => {
 
 			const publicKey = helpers.bytesToHex(contact.publicKey);
-			// truncate outPath to declared length if present
-			const outPath = helpers.bytesToHex(contact.outPath, contact.outPathLen > 0 ? contact.outPathLen : undefined);
 			const type = helpers.constantKey(Constants.AdvType, contact.type).toLowerCase();
 			const lastAdvert = helpers.formatDateTime(contact.lastAdvert);
 			const lastMod = helpers.formatDateTime(contact.lastMod);
+			const advLat = contact.advLat != null ? (contact.advLat / 1e6).toFixed(6) : "";
+			const advLon = contact.advLon != null ? (contact.advLon / 1e6).toFixed(6) : "";
 
-			// coords in 1e-6 degrees
-			const lat = contact.advLat != null ? (contact.advLat / 1e6).toFixed(6) : "";
-			const lon = contact.advLon != null ? (contact.advLon / 1e6).toFixed(6) : "";
-
-			// exclude source keys we replace
 			const {
 				outPath: _omitOutPath,
 				outPathLen: _omitOutPathLen,
@@ -129,12 +128,11 @@ async function apiGetContacts(params) {
 			return {
 				...rest,
 				publicKey,
-				//outPath,
 				type,
 				lastAdvert,
 				lastMod,
-				advLat: lat,
-				advLon: lon
+				advLat,
+				advLon
 			};
 		});
 
@@ -202,7 +200,15 @@ async function apiGetMessages(params) {
 // DEVICE EVENTS
 
 // wait on device connection
-connection.on("connected", async () => {
+	connection.on("connected", async () => {
+
+		// refresh contacts cache on connect
+		try {
+			const contacts = await connection.getContacts();
+			cache.cacheContacts(contacts);
+		} catch (error) {
+			console.log("Failed to warm contact cache", error);
+		}
 
 	selfInfo = await connection.getSelfInfo();
 	selfInfo.advType = helpers.constantKey(Constants.AdvType, selfInfo.type).toLowerCase();
@@ -211,6 +217,9 @@ connection.on("connected", async () => {
 
 	// update device clock
 	await connection.syncDeviceTime();
+
+	// send zero-hop advert
+	await connection.sendZeroHopAdvert();
 
 	// send flood advert
 	// await connection.sendFloodAdvert();
@@ -263,8 +272,9 @@ async function onAdvertReceived(advert) {
 	// start with public key
 	const publicKey = helpers.bytesToHex(advert.publicKey);
 
-	// fetch contact info (same helper used in onContactMessageReceived)
-	const contact = await connection.findContactByPublicKeyPrefix(advert.publicKey).catch((error) => {
+	// fetch contact info (same helper used in onContactMessageReceived), prefer cache
+	const cachedContact = cache.getCachedContactByPublicKey(advert.publicKey);
+	const contact = cachedContact || await connection.findContactByPublicKeyPrefix(advert.publicKey).catch((error) => {
 		console.log("Failed to fetch contact info for advert", error);
 		return null;
 	});
@@ -290,19 +300,15 @@ async function onAdvertReceived(advert) {
 	const advLon = pick("advLon", (v) => (v != null ? (v / 1e6).toFixed(6) : ""));
 	const advName = pick("advName");
 
-	console.log("Received adevert", {
-		publicKey,
-		type,
-		//flags,
-		//outPathLen,
-		//outPath,
+	// update cached contact info from advert
+	cache.cacheContact({
+		publicKey: advert.publicKey,
 		advName,
-		lastAdvert,
-		lastMod,
-		advLat,
-		advLon
+		lastAdvert: lastAdvertRaw,
+		lastMod: lastModRaw
 	});
 
+	// save advert in database
 	try {
 		database.upsertAdvert({
 			publicKey,
@@ -316,20 +322,35 @@ async function onAdvertReceived(advert) {
 	} catch (error) {
 		console.log("Failed to persist advert", error);
 	}
+
+	console.log("Received adevert", {
+		publicKey,
+		type,
+		//flags,
+		//outPathLen,
+		//outPath,
+		advName,
+		lastAdvert,
+		lastMod,
+		advLat,
+		advLon
+	});
 }
 
 // contact message received
 async function onContactMessageReceived(message) {
 
-	// get contact name by prefix
-	const contact = await connection.findContactByPublicKeyPrefix(message.pubKeyPrefix);
-	const contactName = contact.advName;
+	// get contact name by prefix (cache first)
+	const contact = cache.getCachedContactByPrefix(message.pubKeyPrefix) || await connection.findContactByPublicKeyPrefix(message.pubKeyPrefix);
+	const contactName = contact?.advName || "Unknown";
 
 	console.log("Received contact message", contactName, message);
 
+	// save message in database
 	try {
+		if (contact) cache.cacheContact(contact);
 		database.saveMessage({
-			publicKey: contact ? helpers.bytesToHex(contact.publicKey) : null,
+			publicKey: contact?.publicKeyHex || (contact ? helpers.bytesToHex(contact.publicKey) : null),
 			advName: contact?.advName || null,
 			senderTimestamp: message.senderTimestamp,
 			text: message.text
@@ -354,7 +375,7 @@ async function onChannelMessageReceived(message) {
 	const channelInfo = await connection.getChannel(message.channelIdx);
 	const channelName = channelInfo.name;
 
-	// attempt to split "advName: text" or "advName; text"
+	// attempt to split "advName: text"
 	let advName = null;
 	let parsedText = message.text;
 	const match = message.text.match(/^(.*?):\s?(.*)$/);
@@ -368,14 +389,14 @@ async function onChannelMessageReceived(message) {
 	let contactPublicKey = null;
 	if (advName) {
 		try {
-			const contacts = await connection.getContacts();
-			const found = contacts.find((c) => c.advName === advName);
-			if (found) contactPublicKey = helpers.bytesToHex(found.publicKey);
+			const contact = await cache.resolveContactByAdvName(advName, connection);
+			if (contact) contactPublicKey = contact.publicKeyHex;
 		} catch (error) {
 			console.log("Failed to resolve contact by advName", error);
 		}
 	}
 
+	// save message in database
 	try {
 		database.saveMessage({
 			channelIdx: message.channelIdx,
