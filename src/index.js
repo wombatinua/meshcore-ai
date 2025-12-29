@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import * as helpers from "./helpers.js";
 import * as database from "./database.js";
 import * as cache from "./cache.js";
@@ -13,6 +14,9 @@ const reconnectDelay = Number(process.env.RECONNECT_DELAY);
 const connection = new NodeJSSerialConnection(meshcoreDevice);
 
 let selfInfo = {};
+let isConnected = false;
+let reconnectTimer = null;
+let missingDeviceLogged = false;
 
 // http api handlers whitelist
 const actionHandlers = {
@@ -200,13 +204,19 @@ async function apiGetMessages(params) {
 // DEVICE EVENTS
 
 // wait on device connection
-	connection.on("connected", async () => {
+connection.on("connected", async () => {
 
-		// refresh contacts cache on connect
-		try {
-			const contacts = await connection.getContacts();
-			cache.cacheContacts(contacts);
-		} catch (error) {
+	isConnected = true;
+	if (reconnectTimer) {
+		clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+	}
+
+	// refresh contacts cache on connect
+	try {
+		const contacts = await connection.getContacts();
+		cache.cacheContacts(contacts);
+	} catch (error) {
 			console.log("Failed to warm contact cache", error);
 		}
 
@@ -228,10 +238,19 @@ async function apiGetMessages(params) {
 // wait on device disconnection
 connection.on("disconnected", async () => {
 
+	isConnected = false;
 	console.log(selfInfo.name + " (" + selfInfo.advType + ") disconnected from " + meshcoreDevice);
 
 	// reconnect if RECONNECT_DELAY present
-	if (reconnectDelay) helpers.wait(reconnectDelay).then(connectDevice);
+	scheduleReconnect();
+});
+
+// handle serial/device errors and retry after delay
+connection.on("error", (error) => {
+
+	isConnected = false;
+	console.log("Connection error", error?.message || error);
+	scheduleReconnect();
 });
 
 // wait on incoming messages -->
@@ -414,16 +433,45 @@ async function onChannelMessageReceived(message) {
 // (re)connect to device
 async function connectDevice() {
 
+	// avoid hammering when device path is absent
+	if (meshcoreDevice && !fs.existsSync(meshcoreDevice)) {
+		if (!missingDeviceLogged) {
+			console.log(`Device path not found: ${meshcoreDevice} (retrying in ${reconnectDelay}ms)`);
+			missingDeviceLogged = true;
+		}
+		return scheduleReconnect();
+	}
+
 	try {
 		await connection.connect();
 	} catch (error) {
 		console.log(error.message);
 
-		// reconnect if RECONNECT_DELAY present
-		if (reconnectDelay) return helpers.wait(reconnectDelay).then(connectDevice);
-		// or exit gracefully
-		else return;
+		scheduleReconnect();
+		return;
+	}
+
+	// reset missing-device notice after a successful connect
+	missingDeviceLogged = false;
+
+	// watchdog: if not connected within delay, try again
+	if (reconnectDelay) {
+		setTimeout(() => {
+			if (!isConnected) scheduleReconnect();
+		}, reconnectDelay);
 	}
 }
 
 await connectDevice();
+
+// schedule a delayed reconnect once
+function scheduleReconnect() {
+
+	if (!reconnectDelay) return;
+	if (reconnectTimer) return;
+
+	reconnectTimer = setTimeout(() => {
+		reconnectTimer = null;
+		connectDevice();
+	}, reconnectDelay);
+}
