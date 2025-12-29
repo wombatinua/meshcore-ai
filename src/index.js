@@ -225,15 +225,14 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 // advert received
 async function onAdvertReceived(advert) {
 
-	// start with public key\
+	// start with public key
 	const publicKey = helpers.bytesToHex(advert.publicKey);
 
-	// fetch contact list to enrich public-key-only adverts
-	const contacts = await connection.getContacts().catch((error) => {
+	// fetch contact info (same helper used in onContactMessageReceived)
+	const contact = await connection.findContactByPublicKeyPrefix(advert.publicKey).catch((error) => {
 		console.log("Failed to fetch contact info for advert", error);
-		return [];
+		return null;
 	});
-	const contact = contacts.find((c) => helpers.bytesToHex(c.publicKey) === publicKey);
 
 	// helper to pick a value from advert, falling back to contact fields
 	const pick = (field, transform = (v) => v) => {
