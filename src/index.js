@@ -210,24 +210,15 @@ connection.on(Constants.PushCodes.MsgWaiting, async () => {
 	}
 });
 
-// wait on adverts (full data push)
-connection.on(Constants.PushCodes.NewAdvert, async (advert) => {
-
-	try {
-		await onAdvertReceived(advert);
-	} catch (error) {
-		console.log("onAdvertReceived failed", error);
-	}
-});
-
-// wait on adverts (public key only push)
-connection.on(Constants.PushCodes.Advert, async (advert) => {
-
-	try {
-		await onAdvertReceived(advert);
-	} catch (error) {
-		console.log("onAdvertReceived public-key-only failed", error);
-	}
+// wait on adverts (full data push + public key only)
+[Constants.PushCodes.NewAdvert, Constants.PushCodes.Advert].forEach((pushCode) => {
+	connection.on(pushCode, async (advert) => {
+		try {
+			await onAdvertReceived(advert);
+		} catch (error) {
+			console.log("onAdvertReceived failed", error);
+		}
+	});
 });
 
 // advert received
@@ -238,51 +229,39 @@ async function onAdvertReceived(advert) {
 		return;
 	}
 
+	// start with public key we always get
 	const publicKey = helpers.bytesToHex(advert.publicKey);
 
-	// fetch full contact info so we log details even when advert push is minimal
-	let contactDetails = null;
-	try {
-		const contacts = await connection.getContacts();
-		const match = contacts.find((contact) => helpers.bytesToHex(contact.publicKey) === publicKey);
-		if (match) {
-			const matchType = helpers.constantKey(Constants.AdvType, match.type).toLowerCase();
-			const matchOutPath = helpers.bytesToHex(match.outPath, match.outPathLen > 0 ? match.outPathLen : undefined);
-			const matchLastAdvert = helpers.formatDateTime(match.lastAdvert);
-			const matchLastMod = helpers.formatDateTime(match.lastMod);
-			const matchLat = match.advLat != null ? (match.advLat / 1e6).toFixed(6) : "";
-			const matchLon = match.advLon != null ? (match.advLon / 1e6).toFixed(6) : "";
-
-			contactDetails = {
-				type: matchType,
-				outPathLen: match.outPathLen,
-				outPath: matchOutPath,
-				advName: match.advName,
-				lastAdvert: matchLastAdvert,
-				lastMod: matchLastMod,
-				advLat: matchLat,
-				advLon: matchLon,
-				flags: match.flags
-			};
-		}
-	} catch (error) {
+	// fetch contact list so we can enrich public-key-only adverts
+	const contacts = await connection.getContacts().catch((error) => {
 		console.log("Failed to fetch contact info for advert", error);
-	}
+		return [];
+	});
+	const contact = contacts.find((c) => helpers.bytesToHex(c.publicKey) === publicKey);
 
-	const type = advert.type != null ? helpers.constantKey(Constants.AdvType, advert.type).toLowerCase() : contactDetails?.type;
-	const outPath = helpers.bytesToHex(advert.outPath, advert.outPathLen > 0 ? advert.outPathLen : undefined) || contactDetails?.outPath;
-	const lastAdvert = helpers.formatDateTime(advert.lastAdvert) || contactDetails?.lastAdvert;
-	const lastMod = helpers.formatDateTime(advert.lastMod) || contactDetails?.lastMod;
-	const advLat = advert.advLat != null ? (advert.advLat / 1e6).toFixed(6) : contactDetails?.advLat || "";
-	const advLon = advert.advLon != null ? (advert.advLon / 1e6).toFixed(6) : contactDetails?.advLon || "";
-	const flags = advert.flags ?? contactDetails?.flags;
-	const advName = advert.advName || contactDetails?.advName;
+	// helper to pick a value from advert, falling back to contact fields
+	const pick = (field, transform = (v) => v) => {
+		const advVal = advert[field];
+		if (advVal != null) return transform(advVal);
+		if (!contact) return undefined;
+		return transform(contact[field]);
+	};
+
+	const type = pick("type", (t) => helpers.constantKey(Constants.AdvType, t).toLowerCase());
+	const outPathLen = pick("outPathLen");
+	const outPath = pick("outPath", (v) => helpers.bytesToHex(v, outPathLen > 0 ? outPathLen : undefined));
+	const lastAdvert = pick("lastAdvert", helpers.formatDateTime);
+	const lastMod = pick("lastMod", helpers.formatDateTime);
+	const advLat = pick("advLat", (v) => (v != null ? (v / 1e6).toFixed(6) : ""));
+	const advLon = pick("advLon", (v) => (v != null ? (v / 1e6).toFixed(6) : ""));
+	const advName = pick("advName");
+	const flags = pick("flags");
 
 	console.log("Advert received", {
 		publicKey,
 		type,
 		flags,
-		outPathLen: advert.outPathLen ?? contactDetails?.outPathLen,
+		outPathLen,
 		outPath,
 		advName,
 		lastAdvert,
