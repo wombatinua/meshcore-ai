@@ -457,8 +457,6 @@ async function connectDevice() {
 	}
 }
 
-await connectDevice();
-
 // schedule a delayed reconnect once
 function queueReconnect() {
 	if (!reconnectDelay || reconnectTimer) return;
@@ -473,3 +471,5 @@ function clearReconnectTimer() {
 	clearTimeout(reconnectTimer);
 	reconnectTimer = null;
 }
+
+await connectDevice();
