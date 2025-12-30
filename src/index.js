@@ -2,6 +2,7 @@ import fs from "node:fs";
 import * as helpers from "./helpers.js";
 import * as database from "./database.js";
 import * as cache from "./cache.js";
+import { nudgeBot, setBotName } from "./bot.js";
 import HttpServer from "./server.js";
 import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
@@ -227,6 +228,7 @@ connection.on("connected", async () => {
 
 	selfInfo = await connection.getSelfInfo();
 	selfInfo.advType = helpers.constantKey(Constants.AdvType, selfInfo.type).toLowerCase();
+	setBotName(selfInfo.name || null);
 
 	console.log(selfInfo.name + " (" + selfInfo.advType + ") connected on " + meshcoreDevice);
 
@@ -359,6 +361,17 @@ async function onAdvertReceived(advert) {
 		advLat,
 		advLon
 	});
+
+	await nudgeBot({
+		source: "advert",
+		advName,
+		publicKey,
+		type,
+		lastAdvert: lastAdvertRaw,
+		lastMod: lastModRaw,
+		advLat,
+		advLon
+	});
 }
 
 // contact message received
@@ -367,6 +380,7 @@ async function onContactMessageReceived(message) {
 	// get contact name by prefix (cache first)
 	const contact = cache.getCachedContactByPrefix(message.pubKeyPrefix) || await connection.findContactByPublicKeyPrefix(message.pubKeyPrefix);
 	const contactName = contact?.advName || "Unknown";
+	const contactPublicKey = contact?.publicKeyHex || (contact ? helpers.bytesToHex(contact.publicKey) : null);
 
 	console.log("Received contact message", contactName, message);
 
@@ -374,7 +388,7 @@ async function onContactMessageReceived(message) {
 	try {
 		if (contact) cache.cacheContact(contact);
 		database.saveMessage({
-			publicKey: contact?.publicKeyHex || (contact ? helpers.bytesToHex(contact.publicKey) : null),
+			publicKey: contactPublicKey,
 			advName: contact?.advName || null,
 			senderTimestamp: message.senderTimestamp,
 			text: message.text
@@ -389,7 +403,13 @@ async function onContactMessageReceived(message) {
 		return;
 	}
 
-	await connection.sendTextMessage(contact.publicKey, message.text, Constants.TxtTypes.Plain);
+	await nudgeBot({
+		source: "contact",
+		advName: contactName,
+		text: message.text,
+		publicKey: contactPublicKey,
+		senderTimestamp: message.senderTimestamp
+	});
 }
 
 // channel message received
@@ -457,6 +477,16 @@ async function onChannelMessageReceived(message) {
 	} catch (error) {
 		console.log("Failed to persist channel message", error);
 	}
+
+	await nudgeBot({
+		source: "channel",
+		advName,
+		text: parsedText,
+		publicKey: contactPublicKey,
+		channelIdx: message.channelIdx,
+		channelName,
+		senderTimestamp: message.senderTimestamp
+	});
 }
 
 // (re)connect to device
