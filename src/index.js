@@ -478,15 +478,21 @@ async function onChannelMessageReceived(message) {
 		console.log("Failed to persist channel message", error);
 	}
 
-	await nudgeBot({
-		source: "channel",
-		advName,
-		text: parsedText,
-		publicKey: contactPublicKey,
-		channelIdx: message.channelIdx,
-		channelName,
-		senderTimestamp: message.senderTimestamp
-	});
+	// engage bot for channel messages (bot handles reply sending)
+	try {
+		await nudgeBot({
+			source: "channel",
+			advName,
+			text: parsedText,
+			publicKey: contactPublicKey,
+			channelIdx: message.channelIdx,
+			channelName,
+			senderTimestamp: message.senderTimestamp,
+			connection
+		});
+	} catch (error) {
+		console.log("Failed to process bot channel reply", error);
+	}
 }
 
 // (re)connect to device
