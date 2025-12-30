@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS adverts (
 	timestamp TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_adverts_adv_name_last_mod_timestamp ON adverts(adv_name, last_mod, timestamp);
+
 CREATE TABLE IF NOT EXISTS messages (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	public_key TEXT,

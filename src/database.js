@@ -9,8 +9,10 @@ const __dirname = path.dirname(__filename);
 const dbFileName = process.env.SQLITE_DB || "sqlite.db";
 const dbPath = path.isAbsolute(dbFileName) ? dbFileName : path.join(__dirname, dbFileName);
 const migrationPath = path.join(__dirname, "migration.sql");
+const forceMigrate = process.env.SQLITE_FORCE_MIGRATE === "true";
 
 let dbInstance = null;
+let migrationsApplied = false;
 
 function initDatabase() {
 
@@ -20,8 +22,11 @@ function initDatabase() {
 	const isNew = !fs.existsSync(dbPath);
 	dbInstance = new Database(dbPath);
 
-	// run bootstrap schema on new db
-	if (isNew) runMigrations(dbInstance);
+	// run bootstrap schema on new db or when forced via env
+	if (isNew || (forceMigrate && !migrationsApplied)) {
+		runMigrations(dbInstance);
+		migrationsApplied = true;
+	}
 
 	return dbInstance;
 }
@@ -101,6 +106,18 @@ export function saveMessage({
 		senderTimestamp: nullish(senderTimestamp),
 		text: nullish(text)
 	});
+}
+
+// fetch recent adverts by name (for fallback resolution)
+export function findAdvertsByName(advName, limit = 3) {
+	const db = initDatabase();
+	return db.prepare(`
+		SELECT public_key, adv_name, last_mod, timestamp
+		FROM adverts
+		WHERE adv_name = ?
+		ORDER BY COALESCE(last_mod, 0) DESC, datetime(timestamp) DESC
+		LIMIT ?
+	`).all(advName, limit);
 }
 
 // fetch all adverts

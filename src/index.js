@@ -13,6 +13,13 @@ const meshcoreDevice = process.env.MESHCORE_DEVICE;
 const reconnectDelay = Number(process.env.RECONNECT_DELAY);
 const connection = new NodeJSSerialConnection(meshcoreDevice);
 
+// ensure database is initialized (and migrations applied when forced)
+try {
+	database.getDatabasePath();
+} catch (error) {
+	console.log("Database init failed", error);
+}
+
 let selfInfo = {};
 let isConnected = false;
 let reconnectTimer = null;
@@ -407,7 +414,31 @@ async function onChannelMessageReceived(message) {
 	if (advName) {
 		try {
 			const contact = await cache.resolveContactByAdvName(advName, connection);
-			if (contact) contactPublicKey = contact.publicKeyHex;
+			if (contact) {
+				contactPublicKey = contact.publicKeyHex;
+			} else {
+
+				// fallback to adverts table for previously-seen public keys
+				const adverts = database.findAdvertsByName(advName, 3);
+				const uniqueKeys = Array.from(new Set(adverts.map((advert) => advert.public_key).filter(Boolean)));
+
+				if (uniqueKeys.length === 1) {
+
+					contactPublicKey = uniqueKeys[0];
+
+					// cache a synthetic contact entry to speed up further lookups
+					cache.cacheContact({
+						publicKey: Buffer.from(uniqueKeys[0], "hex"),
+						advName,
+						lastMod: adverts[0]?.last_mod
+					});
+
+					console.log("Resolved contact via adverts fallback", { advName, publicKey: contactPublicKey });
+				} else if (uniqueKeys.length > 1) {
+
+					console.log("Ambiguous adverts for advName, keeping publicKey null", { advName, keys: uniqueKeys });
+				}
+			}
 		} catch (error) {
 			console.log("Failed to resolve contact by advName", error);
 		}
@@ -472,4 +503,5 @@ function clearReconnectTimer() {
 	reconnectTimer = null;
 }
 
+// connect device on launch
 await connectDevice();
