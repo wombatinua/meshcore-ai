@@ -10,6 +10,7 @@ const dbFileName = process.env.SQLITE_DB || "sqlite.db";
 const dbPath = path.isAbsolute(dbFileName) ? dbFileName : path.join(__dirname, dbFileName);
 const migrationPath = path.join(__dirname, "migration.sql");
 const forceMigrate = process.env.SQLITE_FORCE_MIGRATE === "true";
+const journalMode = (process.env.SQLITE_JOURNAL_MODE || "wal").trim();
 
 let dbInstance = null;
 let migrationsApplied = false;
@@ -21,6 +22,11 @@ function initDatabase() {
 	// create on first use
 	const isNew = !fs.existsSync(dbPath);
 	dbInstance = new Database(dbPath);
+
+	// prefer WAL for better concurrent reads/writes unless disabled
+	if (journalMode) {
+		dbInstance.pragma(`journal_mode = ${journalMode}`);
+	}
 
 	// run bootstrap schema on new db or when forced via env
 	if (isNew || (forceMigrate && !migrationsApplied)) {
