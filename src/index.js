@@ -35,6 +35,8 @@ const actionHandlers = {
 	apiSendZeroHopAdvert,
 	apiGetContacts,
 	apiGetChannels,
+	apiJoinPrivateChannel,
+	apiRemoveChannel,
 	apiGetAdverts,
 	apiGetMessages
 };
@@ -177,6 +179,94 @@ async function apiGetChannels(params) {
 	} catch (error) {
 		console.log("apiGetChannels failed", error);
 		return { message: "Channels retrieval failed", error: error?.message || String(error) };
+	}
+}
+
+// join or update a private channel slot
+async function apiJoinPrivateChannel(params) {
+
+	console.log("apiJoinPrivateChannel", params);
+
+	try {
+		const channelName = typeof params?.channelName === "string" ? params.channelName.trim() : "";
+		const secretHexRaw = typeof params?.secretKey === "string" ? params.secretKey.trim() : "";
+
+		// basic param validation
+		if (!channelName) {
+			return { message: "Invalid channelName" };
+		}
+
+		if (!secretHexRaw) {
+			return { message: "Invalid secretKey" };
+		}
+
+		const secretHex = secretHexRaw.replace(/^0x/, "").toLowerCase();
+
+		if (secretHex.length % 2 !== 0 || !/^[0-9a-f]+$/.test(secretHex)) {
+			return { message: "Secret key must be a valid hex string" };
+		}
+
+		const secret = Buffer.from(secretHex, "hex");
+
+		if (secret.length !== 16) {
+			return { message: "Secret key must be 16 bytes (32 hex characters)" };
+		}
+
+		// fetch current channels once to decide whether to reuse or occupy a slot
+		const channels = await connection.getChannels();
+
+		const existingChannel = channels.find((channel) => {
+			const channelSecretHex = helpers.bytesToHex(channel.secret);
+			return channel.name === channelName || (channelSecretHex && channelSecretHex.toLowerCase() === secretHex);
+		});
+
+		let channelIdx = existingChannel?.channelIdx;
+
+		if (channelIdx == null) {
+
+			// locate an empty slot for a new channel
+			const emptyChannel = channels.find((channel) => {
+				const channelSecretHex = helpers.bytesToHex(channel.secret);
+				return !channel.name && (!channelSecretHex || /^0+$/.test(channelSecretHex));
+			});
+
+			if (!emptyChannel) {
+				return { message: "No available channel slots" };
+			}
+
+			channelIdx = emptyChannel.channelIdx;
+		}
+
+		await connection.setChannel(channelIdx, channelName, secret);
+
+		return { channelIdx, channelName, secret: secretHex };
+	} catch (error) {
+		console.log("apiJoinPrivateChannel failed", error);
+		return { message: "Join private channel failed", error: error?.message || String(error) };
+	}
+}
+
+// remove a channel slot by index
+async function apiRemoveChannel(params) {
+
+	console.log("apiRemoveChannel", params);
+
+	try {
+		const idxRaw = params?.channelIdx;
+		const channelIdx = typeof idxRaw === "number" ? idxRaw : Number(idxRaw);
+
+		// ensure we have a non-negative integer index
+		if (!Number.isInteger(channelIdx) || channelIdx < 0) {
+			return { message: "Invalid channelIdx" };
+		}
+
+		// clear the channel slot
+		await connection.deleteChannel(channelIdx);
+
+		return { channelIdx, message: "Channel removed" };
+	} catch (error) {
+		console.log("apiRemoveChannel failed", error);
+		return { message: "Remove channel failed", error: error?.message || String(error) };
 	}
 }
 
