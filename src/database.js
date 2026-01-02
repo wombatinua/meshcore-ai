@@ -73,7 +73,7 @@ export function upsertAdvert({
 
 	db.prepare(`
 		INSERT INTO adverts (public_key, type, adv_name, last_advert, last_mod, adv_lat, adv_lon, timestamp)
-		VALUES (@publicKey, @type, @advName, @lastAdvert, @lastMod, @advLat, @advLon, datetime('now'))
+		VALUES (@publicKey, @type, @advName, @lastAdvert, @lastMod, @advLat, @advLon, strftime('%s','now'))
 		ON CONFLICT(public_key) DO UPDATE SET
 			type = excluded.type,
 			adv_name = excluded.adv_name,
@@ -81,7 +81,7 @@ export function upsertAdvert({
 			last_mod = excluded.last_mod,
 			adv_lat = excluded.adv_lat,
 			adv_lon = excluded.adv_lon,
-			timestamp = datetime('now')
+			timestamp = strftime('%s','now')
 	`).run({
 		publicKey,
 		type: nullish(type),
@@ -107,7 +107,7 @@ export function saveMessage({
 
 	db.prepare(`
 		INSERT INTO messages (public_key, channel_idx, channel_name, adv_name, sender_timestamp, text, timestamp)
-		VALUES (@publicKey, @channelIdx, @channelName, @advName, @senderTimestamp, @text, datetime('now'))
+		VALUES (@publicKey, @channelIdx, @channelName, @advName, @senderTimestamp, @text, strftime('%s','now'))
 	`).run({
 		publicKey: nullish(publicKey),
 		channelIdx: nullish(channelIdx),
