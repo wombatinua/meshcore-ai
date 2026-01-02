@@ -6,7 +6,7 @@ import Database from "better-sqlite3";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbFileName = process.env.SQLITE_DB || "sqlite.db";
+const dbFileName = process.env.SQLITE_DB || path.join("data", "sqlite.db");
 const dbPath = path.isAbsolute(dbFileName) ? dbFileName : path.join(__dirname, dbFileName);
 const migrationPath = path.join(__dirname, "migration.sql");
 const forceMigrate = process.env.SQLITE_FORCE_MIGRATE === "true";
@@ -21,6 +21,10 @@ function initDatabase() {
 
 	// create on first use
 	const isNew = !fs.existsSync(dbPath);
+	const dbDir = path.dirname(dbPath);
+	if (!fs.existsSync(dbDir)) {
+		fs.mkdirSync(dbDir, { recursive: true });
+	}
 	dbInstance = new Database(dbPath);
 
 	// prefer WAL for better concurrent reads/writes unless disabled

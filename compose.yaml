@@ -11,3 +11,5 @@ services:
       - /dev/ttyUSB0:/dev/ttyUSB0
     group_add:
       - 20 # "dialout" (stat -c "%g" /dev/ttyUSB0)
+    volumes:
+      - ./src/data:/app/src/data

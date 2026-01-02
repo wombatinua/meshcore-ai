@@ -10,4 +10,4 @@ COPY .npmrc .npmrc
 
 RUN npm install --omit=dev
 
-CMD ["npm", "start"]
+CMD ["npm", "run", "start:docker"]
