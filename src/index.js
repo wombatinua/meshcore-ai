@@ -190,16 +190,22 @@ async function apiJoinPrivateChannel(params) {
 	console.log("apiJoinPrivateChannel", params);
 
 	try {
-		const channelName = typeof params?.channelName === "string" ? params.channelName.trim() : "";
-		const secretHexRaw = typeof params?.secretKey === "string" ? params.secretKey.trim() : "";
+		// prefer new param names ("name", "secret") but accept legacy keys as fallback
+		const channelName = typeof params?.name === "string"
+			? params.name.trim()
+			: (typeof params?.channelName === "string" ? params.channelName.trim() : "");
+
+		const secretHexRaw = typeof params?.secret === "string"
+			? params.secret.trim()
+			: (typeof params?.secretKey === "string" ? params.secretKey.trim() : "");
 
 		// basic param validation
 		if (!channelName) {
-			return { message: "Invalid channelName" };
+			return { message: "Invalid channel name" };
 		}
 
 		if (!secretHexRaw) {
-			return { message: "Invalid secretKey" };
+			return { message: "Invalid secret" };
 		}
 
 		const secretHex = secretHexRaw.replace(/^0x/, "").toLowerCase();
@@ -241,7 +247,7 @@ async function apiJoinPrivateChannel(params) {
 
 		await connection.setChannel(channelIdx, channelName, secret);
 
-		return { channelIdx, channelName, secret: secretHex };
+		return { channelIdx, name: channelName, secret: secretHex };
 	} catch (error) {
 		console.log("apiJoinPrivateChannel failed", error);
 		return { message: "Join private channel failed", error: error?.message || String(error) };
