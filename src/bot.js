@@ -1,14 +1,21 @@
 import { queryAiGate } from "./aigate.js";
 
-let botName = null;
-const allowedChannels = new Set(
-	(String(process.env.BOT_CHANNELS || "")
+const parseChannelIds = (value) => new Set(
+	(String(value || "")
 		.split(",")
 		.map((part) => part.trim())
 		.filter(Boolean)
 		.map(Number)
 		.filter((n) => Number.isFinite(n)))
 );
+
+let botName = null;
+const allowedChannels = parseChannelIds(process.env.BOT_CHANNELS);
+const translateFromChannels = parseChannelIds(process.env.AI_TRANSLATE_FROM);
+const translateToChannel = (() => {
+	const n = Number(process.env.AI_TRANSLATE_TO);
+	return Number.isFinite(n) ? n : null;
+})();
 
 export function setBotName(name) {
 	botName = name || null;
@@ -54,6 +61,22 @@ export async function nudgeBot({
 			return handleContactMessage({ advName, text, publicKey, senderTimestamp });
 
 		case "channel":
+			// forward translation when configured, regardless of bot mention
+			try {
+				const translationResult = await translateChannelMessage({
+					sourceChannelIdx: channelIdx,
+					advName,
+					text,
+					destinationChannelIdx: translateToChannel,
+					connection
+				});
+				if (translationResult?.message) {
+					console.log("translateChannelMessage notice", translationResult);
+				}
+			} catch (error) {
+				console.log("nudgeBot translateChannelMessage failed", error);
+			}
+
 			// engage only on allowed channels and when explicitly mentioned
 			if (isAllowedChannel(channelIdx) && isBotMentioned(text)) {
 				return handleChannelMessage({ advName, text, publicKey, channelIdx, channelName, senderTimestamp, connection });
@@ -93,4 +116,52 @@ async function handleChannelMessage({ advName, text, publicKey, channelIdx, chan
 async function handleAdvert({ advName, publicKey, type, lastAdvert, lastMod, advLat, advLon }) {
 	
 	console.log("nudgeBot advert path", { botName, advName, publicKey, type, lastAdvert, lastMod, advLat, advLon });
+}
+
+// translate a channel message via AI and forward to a destination channel
+export async function translateChannelMessage({
+	sourceChannelIdx,
+	advName,
+	text,
+	destinationChannelIdx,
+	connection
+}) {
+
+	const messageLimit = 135;
+	const src = Number(sourceChannelIdx);
+	if (!Number.isFinite(src) || !translateFromChannels.has(src)) return null;
+
+	const dest = Number(destinationChannelIdx ?? translateToChannel);
+	if (!Number.isFinite(dest)) return { message: "Missing destination channel id" };
+	if (!connection) return { message: "Missing connection" };
+
+	const rawText = (text || "").trim();
+	if (!rawText) return { message: "Missing text" };
+
+	try {
+		// compute how many characters AI can use (reserve space for "advName: ")
+		const budget = Math.max(0, messageLimit - ((advName?.length || "Unknown".length) + 2));
+
+		const { text: translated } = await queryAiGate({
+			userPrompt: rawText,
+			systemPrompt: `Translate to English. Maximum response size ${budget} characters.`,
+			maxTokens: 40
+		});
+
+		const translatedClean = (translated || "").trim();
+		if (!translatedClean) return { message: "Translation empty" };
+
+		const namePart = advName || "Unknown";
+
+		// hard cap to protect downstream limits
+		const capped = translatedClean.slice(0, budget);
+		const payload = `${namePart}: ${capped}`.slice(0, messageLimit);
+
+		await connection.sendChannelTextMessage(dest, payload);
+
+		return { channelIdx: dest, text: payload };
+	} catch (error) {
+		console.log("translateChannelMessage failed", error);
+		return { message: "Translation failed", error: error?.message || String(error) };
+	}
 }
