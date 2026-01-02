@@ -144,7 +144,7 @@ export async function translateChannelMessage({
 
 		const { text: translated } = await queryAiGate({
 			userPrompt: rawText,
-			systemPrompt: `Translate to English. Maximum response size ${budget} characters.`,
+			systemPrompt: `You are a message translation service. Only translate input tesxt to English. Maximum response size ${budget} characters.`,
 			maxTokens: 40
 		});
 
