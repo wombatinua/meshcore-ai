@@ -139,7 +139,12 @@ export function getAdverts() {
 // fetch recent messages (default 100)
 export function getMessages(limit = 100) {
 	const db = initDatabase();
-	return db.prepare("SELECT * FROM messages ORDER BY timestamp DESC LIMIT ?").all(limit);
+	return db.prepare(`
+		SELECT *
+		FROM messages
+		ORDER BY datetime(timestamp) DESC, id DESC
+		LIMIT ?
+	`).all(limit);
 }
 
 // expose resolved db path (ensures init)
