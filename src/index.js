@@ -3,6 +3,7 @@ import * as helpers from "./helpers.js";
 import * as database from "./database.js";
 import * as cache from "./cache.js";
 import { nudgeBot, setBotName } from "./bot.js";
+import { queryAiGate } from "./aigate.js";
 import HttpServer from "./server.js";
 import Constants from "meshcore.js/src/constants.js";
 import NodeJSSerialConnection from "meshcore.js/src/connection/nodejs_serial_connection.js";
@@ -37,6 +38,7 @@ const actionHandlers = {
 	apiGetChannels,
 	apiJoinPrivateChannel,
 	apiRemoveChannel,
+	apiQueryAiGate,
 	apiGetAdverts,
 	apiGetMessages
 };
@@ -267,6 +269,51 @@ async function apiRemoveChannel(params) {
 	} catch (error) {
 		console.log("apiRemoveChannel failed", error);
 		return { message: "Remove channel failed", error: error?.message || String(error) };
+	}
+}
+
+// call AI gateway with OpenAI-compatible params
+async function apiQueryAiGate(params) {
+
+	console.log("apiQueryAiGate", params);
+
+	const asString = (value) => typeof value === "string" ? value : undefined;
+	const asNumber = (value) => {
+		if (value === undefined || value === null || value === "") return undefined;
+		const num = Number(value);
+		return Number.isFinite(num) ? num : undefined;
+	};
+
+	try {
+		// basic required param
+		const userPrompt = asString(params?.userPrompt)?.trim();
+		if (!userPrompt) {
+			return { message: "Missing userPrompt" };
+		}
+
+		// optional overrides (fallbacks are inside queryAiGate)
+		const systemPrompt = asString(params?.systemPrompt);
+		const endpoint = asString(params?.endpoint);
+		const apiKey = asString(params?.apiKey);
+		const model = asString(params?.model);
+		const temperature = asNumber(params?.temperature);
+		const maxTokens = asNumber(params?.maxTokens);
+
+		// delegate to shared AI gateway helper
+		const { text, raw } = await queryAiGate({
+			userPrompt,
+			systemPrompt,
+			endpoint,
+			apiKey,
+			model,
+			temperature,
+			maxTokens
+		});
+
+		return { text, raw };
+	} catch (error) {
+		console.log("apiQueryAiGate failed", error);
+		return { message: "AI query failed", error: error?.message || String(error) };
 	}
 }
 

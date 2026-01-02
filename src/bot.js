@@ -1,3 +1,5 @@
+import { queryAiGate } from "./aigate.js";
+
 let botName = null;
 const allowedChannels = new Set(
 	(String(process.env.BOT_CHANNELS || "")
