@@ -1,4 +1,5 @@
 import { queryAiGate } from "./aigate.js";
+import { wait } from "./helpers.js";
 
 const parseChannelIds = (value) => new Set(
 	(String(value || "")
@@ -142,7 +143,7 @@ export async function translateChannelMessage({
 		// compute how many characters AI can use (reserve space for "advName: ")
 		const budget = Math.max(0, messageLimit - ((advName?.length || "Unknown".length) + 2));
 
-		const { text: translated } = await queryAiGate({
+		const { text: translated } = await queryAiGate({gtrtfgrghjghhthtrjhgggggggghyugrgghrgggtggtrgbgggtjuyyrfgghjrtg
 			userPrompt: rawText,
 			systemPrompt: `You are a message translation service. Only translate input text to English. Maximum response size ${budget} characters.`,
 			maxTokens: 40
@@ -157,6 +158,8 @@ export async function translateChannelMessage({
 		const capped = translatedClean.slice(0, budget);
 		const payload = `${namePart}: ${capped}`.slice(0, messageLimit);
 
+		// small pause before forwarding to avoid hammering
+		await wait(10000);
 		await connection.sendChannelTextMessage(dest, payload);
 
 		return { channelIdx: dest, text: payload };
