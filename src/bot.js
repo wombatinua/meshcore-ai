@@ -143,7 +143,7 @@ export async function translateChannelMessage({
 		// compute how many characters AI can use (reserve space for "advName: ")
 		const budget = Math.max(0, messageLimit - ((advName?.length || "Unknown".length) + 2));
 
-		const { text: translated } = await queryAiGate({gtrtfgrghjghhthtrjhgggggggghyugrgghrgggtggtrgbgggtjuyyrfgghjrtg
+		const { text: translated } = await queryAiGate({
 			userPrompt: rawText,
 			systemPrompt: `You are a message translation service. Only translate input text to English. Maximum response size ${budget} characters.`,
 			maxTokens: 40
