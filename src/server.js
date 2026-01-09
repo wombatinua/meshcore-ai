@@ -69,6 +69,9 @@ export default class HttpServer {
 
 		try {
 
+			// lightweight health endpoint
+			if (req.method === "GET" && requestUrl.pathname === "/health") return this.text(res, 200, "ok");
+
 			// POST
 			if (req.method === "POST") {
 

@@ -15,3 +15,9 @@ services:
       - 20 # "dialout" (stat -c "%g" /dev/ttyUSB0)
     volumes:
       - ./src/data:/app/src/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:${HTTP_PORT:-8080}/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
