@@ -16,7 +16,7 @@ services:
     volumes:
       - ./src/data:/app/src/data
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:${HTTP_PORT:-8080}/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:${HTTP_PORT:-8080}/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
