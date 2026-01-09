@@ -145,7 +145,7 @@ export async function translateChannelMessage({
 
 		const { text: translated } = await queryAiGate({
 			userPrompt: rawText,
-			systemPrompt: `Return only the English translation. If not translatable, return N/A. Max ${budget} chars.`,
+			systemPrompt: `Return only the Latvian—English translation. If not translatable, return as is. Max ${budget} chars.`,
 			maxTokens: 40
 		});
 
