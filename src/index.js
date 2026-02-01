@@ -330,15 +330,15 @@ async function apiGetFirmwareVer(params) {
 	console.log("apiGetFirmwareVer", params);
 
 	try {
-		// optional appTargetVer byte (defaults to 1)
-		const appTargetVerRaw = params?.appTargetVer;
-		const appTargetVer = Number.isInteger(appTargetVerRaw) ? appTargetVerRaw : 1;
-
+		const appTargetVer = Number.isInteger(params?.appTargetVer) ? params.appTargetVer : 1;
 		const info = await connection.deviceQuery(appTargetVer);
 
-		// clean manufacturer/model string for readability
-		const manufacturerModelRaw = info?.manufacturerModel || "";
-		const manufacturerModel = manufacturerModelRaw.replace(/\0/g, "").trim();
+		// clean manufacturer/model string and enforce space before version token
+		const manufacturerModel = (info?.manufacturerModel || "")
+			.replace(/\0/g, "")
+			.replace(/(\S)(v\d+\.\d+\.\d+(?:-[0-9A-Za-z]+)?)/, "$1 $2")
+			.replace(/\s+/g, " ")
+			.trim();
 
 		return {
 			firmwareVer: info?.firmwareVer ?? null,
