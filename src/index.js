@@ -335,10 +335,15 @@ async function apiGetFirmwareVer(params) {
 		const appTargetVer = Number.isInteger(appTargetVerRaw) ? appTargetVerRaw : 1;
 
 		const info = await connection.deviceQuery(appTargetVer);
+
+		// clean manufacturer/model string for readability
+		const manufacturerModelRaw = info?.manufacturerModel || "";
+		const manufacturerModel = manufacturerModelRaw.replace(/\0/g, "").trim();
+
 		return {
 			firmwareVer: info?.firmwareVer ?? null,
 			firmwareBuildDate: info?.firmware_build_date ?? null,
-			manufacturerModel: info?.manufacturerModel ?? null
+			manufacturerModel: manufacturerModel || null
 		};
 	} catch (error) {
 		console.log("apiGetFirmwareVer failed", error);
