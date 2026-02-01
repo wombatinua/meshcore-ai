@@ -38,6 +38,7 @@ const actionHandlers = {
 	apiGetChannels,
 	apiJoinPrivateChannel,
 	apiRemoveChannel,
+	apiGetFirmwareVer,
 	apiQueryAiGate,
 	apiGetAdverts,
 	apiGetMessages
@@ -320,6 +321,28 @@ async function apiQueryAiGate(params) {
 	} catch (error) {
 		console.log("apiQueryAiGate failed", error);
 		return { message: "AI query failed", error: error?.message || String(error) };
+	}
+}
+
+// get device firmware version/build info
+async function apiGetFirmwareVer(params) {
+
+	console.log("apiGetFirmwareVer", params);
+
+	try {
+		// optional appTargetVer byte (defaults to 1)
+		const appTargetVerRaw = params?.appTargetVer;
+		const appTargetVer = Number.isInteger(appTargetVerRaw) ? appTargetVerRaw : 1;
+
+		const info = await connection.deviceQuery(appTargetVer);
+		return {
+			firmwareVer: info?.firmwareVer ?? null,
+			firmwareBuildDate: info?.firmware_build_date ?? null,
+			manufacturerModel: info?.manufacturerModel ?? null
+		};
+	} catch (error) {
+		console.log("apiGetFirmwareVer failed", error);
+		return { message: "Firmware query failed", error: error?.message || String(error) };
 	}
 }
 
