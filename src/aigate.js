@@ -36,7 +36,7 @@ export async function queryAiGate({
 		model: process.env.AI_MODEL || "gpt-5.4-mini",
 		systemPrompt: process.env.AI_SYSTEM_PROMPT || "",
 		temperature: parseNumber(process.env.AI_TEMPERATURE),
-		max_completion_tokens: parseNumber(process.env.AI_MAX_TOKENS)
+		max_completion_tokens: parseNumber(process.env.AI_MAX_COMPLETION_TOKENS)
 	};
 
 	// params override env defaults
@@ -65,7 +65,7 @@ export async function queryAiGate({
 		model: resolved.model,
 		messages,
 		...(typeof resolved.temperature === "number" ? { temperature: resolved.temperature } : {}),
-		...(typeof resolved.max_completion_tokens === "number" ? { max_tokens: resolved.max_completion_tokens } : {})
+		...(typeof resolved.max_completion_tokens === "number" ? { max_completion_tokens: resolved.max_completion_tokens } : {})
 	};
 
 	// execute request
