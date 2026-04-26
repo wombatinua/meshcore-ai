@@ -6,7 +6,7 @@
 // 	endpoint: process.env.AI_API,
 // 	apiKey: process.env.AI_API_KEY,
 // 	temperature: 0.3,
-// 	maxTokens: 128
+// 	max_completion_tokens: 128
 // });
 
 // Lightweight helper for calling an OpenAI-compatible chat endpoint
@@ -17,7 +17,7 @@ export async function queryAiGate({
 	systemPrompt,
 	userPrompt = "",
 	temperature,
-	maxTokens,
+	max_completion_tokens,
 	headers = {},
 	signal
 } = {}) {
@@ -36,7 +36,7 @@ export async function queryAiGate({
 		model: process.env.AI_MODEL || "gpt-5.4-mini",
 		systemPrompt: process.env.AI_SYSTEM_PROMPT || "",
 		temperature: parseNumber(process.env.AI_TEMPERATURE),
-		maxTokens: parseNumber(process.env.AI_MAX_TOKENS)
+		max_completion_tokens: parseNumber(process.env.AI_MAX_TOKENS)
 	};
 
 	// params override env defaults
@@ -46,7 +46,7 @@ export async function queryAiGate({
 		model: pick(model, envConfig.model),
 		systemPrompt: pick(systemPrompt, envConfig.systemPrompt),
 		temperature: pick(temperature, envConfig.temperature),
-		maxTokens: pick(maxTokens, envConfig.maxTokens)
+		max_completion_tokens: pick(max_completion_tokens, envConfig.max_completion_tokens)
 	};
 
 	// minimal validation
@@ -65,7 +65,7 @@ export async function queryAiGate({
 		model: resolved.model,
 		messages,
 		...(typeof resolved.temperature === "number" ? { temperature: resolved.temperature } : {}),
-		...(typeof resolved.maxTokens === "number" ? { max_tokens: resolved.maxTokens } : {})
+		...(typeof resolved.max_completion_tokens === "number" ? { max_tokens: resolved.max_completion_tokens } : {})
 	};
 
 	// execute request

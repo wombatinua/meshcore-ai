@@ -304,7 +304,7 @@ async function apiQueryAiGate(params) {
 		const apiKey = asString(params?.apiKey);
 		const model = asString(params?.model);
 		const temperature = asNumber(params?.temperature);
-		const maxTokens = asNumber(params?.maxTokens);
+		const max_completion_tokens = asNumber(params?.max_completion_tokens);
 
 		// delegate to shared AI gateway helper
 		const { text, raw } = await queryAiGate({
@@ -314,7 +314,7 @@ async function apiQueryAiGate(params) {
 			apiKey,
 			model,
 			temperature,
-			maxTokens
+			max_completion_tokens
 		});
 
 		return { text, raw };
