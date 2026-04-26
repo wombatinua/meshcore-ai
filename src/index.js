@@ -520,7 +520,7 @@ async function onAdvertReceived(advert) {
 		console.log("Failed to persist advert", error);
 	}
 
-	console.log("Received adevert", {
+	console.log("Received advert", {
 		publicKey,
 		type,
 		//flags,

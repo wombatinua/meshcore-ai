@@ -2,7 +2,7 @@
 // const { text } = await queryAiGate({
 // 	userPrompt: "Summarize this message",
 // 	systemPrompt: "You are MeshCore assistant.",
-// 	model: "gpt-4o-mini",
+// 	model: "gpt-5.4-mini",
 // 	endpoint: process.env.AI_API,
 // 	apiKey: process.env.AI_API_KEY,
 // 	temperature: 0.3,
@@ -33,7 +33,7 @@ export async function queryAiGate({
 	const envConfig = {
 		endpoint: process.env.AI_API || "https://api.openai.com/v1/chat/completions",
 		apiKey: process.env.AI_API_KEY,
-		model: process.env.AI_MODEL || "gpt-4o-mini",
+		model: process.env.AI_MODEL || "gpt-5.4-mini",
 		systemPrompt: process.env.AI_SYSTEM_PROMPT || "",
 		temperature: parseNumber(process.env.AI_TEMPERATURE),
 		maxTokens: parseNumber(process.env.AI_MAX_TOKENS)
